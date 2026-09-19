@@ -17,6 +17,9 @@ Name = <string> - The name of the UI.
 HidePremium = <bool> - Whether or not the user details shows Premium status or not.
 SaveConfig = <bool> - Toggles the config saving in the UI.
 ConfigFolder = <string> - The name of the folder where the configs are saved.
+SearchEnabled = <bool> - Shows the built-in element search field. Enabled by default.
+Theme = <string|table> - Uses a registered theme name or a custom theme table for this window.
+PerformanceMode = <bool> - Reduces animation and startup work for low-end devices. Enabled by default on touch devices.
 IntroEnabled = <bool> - Whether or not to show the intro animation.
 IntroText = <string> - Text to show in the intro animation.
 IntroIcon = <string> - URL to the image you want to use in the intro animation.
@@ -24,6 +27,30 @@ Icon = <string> - URL to the image you want displayed on the window.
 CloseCallback = <function> - Function to execute when the window is closed.
 ]]
 ```
+
+### Managing configurations
+```lua
+OrionLib:SaveConfig("combat")
+OrionLib:LoadConfig("combat")
+```
+
+Saved values must use `Save = true` and a `Flag`.
+
+### Themes
+```lua
+OrionLib:RegisterTheme("Ocean", {
+	Main = Color3.fromRGB(18, 24, 32),
+	Second = Color3.fromRGB(27, 38, 51),
+	Stroke = Color3.fromRGB(70, 100, 130),
+	Divider = Color3.fromRGB(55, 75, 95),
+	Text = Color3.fromRGB(235, 245, 255),
+	TextDark = Color3.fromRGB(150, 175, 195)
+})
+OrionLib:SetTheme("Ocean")
+```
+
+### Mobile support
+The window automatically adapts to touch screens and stays within the available viewport. Buttons, dragging, sliders, color pickers, and keybind assignment support touch input. On mobile, selecting a keybind opens an on-screen keyboard with common navigation and control keys. When the window is hidden on a mobile device, use the `Open Orion` button to show it again.
 
 
 
@@ -52,6 +79,63 @@ Name = <string> - The name of the section.
 ]]
 ```
 You can add elements to sections the same way you would add them to a tab normally.
+
+## Custom GUI elements
+```lua
+local Badge = Tab:AddCircle({
+	Size = UDim2.new(0, 48, 0, 48),
+	Color = Color3.fromRGB(40, 120, 220),
+	Text = "!",
+	TextSize = 18
+})
+
+local Panel = Instance.new("Frame")
+Tab:AddCustom(Panel, {
+	Size = UDim2.new(1, 0, 0, 80),
+	BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+})
+```
+
+`AddCircle` creates a themed circular component. `AddCustom` accepts any Roblox `GuiObject`, so custom panels and controls can be added without changing the library internals.
+
+```lua
+local Card, CardButton = Tab:AddPanel({
+	Shape = "Rounded", -- Use "Circle" for a circular panel.
+	Size = UDim2.new(1, 0, 0, 64),
+	CornerRadius = 12,
+	Text = "Open settings",
+	Callback = function()
+		print("Card pressed")
+	end
+})
+
+Card:SetText("Settings")
+```
+
+`AddPanel` supports `Shape`, `CornerRadius`, `Transparency`, `Stroke`, `Thickness`, `Text`, and `Callback`.
+
+For low-end devices, keep the default `PerformanceMode` or enable it explicitly:
+```lua
+local Window = OrionLib:MakeWindow({
+	Name = "Fast UI",
+	PerformanceMode = true
+})
+```
+
+### Progress and layout helpers
+```lua
+Tab:AddDivider()
+
+local Loading = Tab:AddProgressBar({
+	Name = "Loading",
+	Min = 0,
+	Max = 100,
+	Value = 25,
+	Color = Color3.fromRGB(60, 140, 230)
+})
+
+Loading:Set(75)
+```
 
 ## Notifying the user
 ```lua

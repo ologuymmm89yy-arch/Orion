@@ -2,10 +2,31 @@
 
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
-local RunService = game:GetService("RunService")
 local LocalPlayer = game:GetService("Players").LocalPlayer
-local Mouse = LocalPlayer:GetMouse()
 local HttpService = game:GetService("HttpService")
+local IsMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+
+local function IsPointerInput(Input)
+	return Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch
+end
+
+local function GetGuiParent()
+	if type(gethui) == "function" then
+		local Success, HiddenUi = pcall(gethui)
+		if Success and HiddenUi then
+			return HiddenUi
+		end
+	end
+	return game:GetService("CoreGui")
+end
+
+local function HasFileSystem()
+	return type(isfile) == "function"
+		and type(readfile) == "function"
+		and type(writefile) == "function"
+		and type(isfolder) == "function"
+		and type(makefolder) == "function"
+end
 
 local OrionLib = {
 	Elements = {},
@@ -24,7 +45,8 @@ local OrionLib = {
 	},
 	SelectedTheme = "Default",
 	Folder = nil,
-	SaveCfg = false
+	SaveCfg = false,
+	PerformanceMode = false
 }
 
 --Feather Icons https://github.com/evoincorp/lucideblox/tree/master/src/modules/util - Created by 7kayoh
@@ -39,43 +61,28 @@ if not Success then
 end	
 
 local function GetIcon(IconName)
-	if Icons[IconName] ~= nil then
-		return Icons[IconName]
-	else
-		return nil
-	end
+	return Icons[IconName]
 end   
 
 local Orion = Instance.new("ScreenGui")
 Orion.Name = "Orion"
-if syn then
-	syn.protect_gui(Orion)
-	Orion.Parent = game.CoreGui
-else
-	Orion.Parent = gethui() or game.CoreGui
+Orion.IgnoreGuiInset = true
+Orion.ResetOnSpawn = false
+Orion.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+local GuiParent = GetGuiParent()
+if type(syn) == "table" and type(syn.protect_gui) == "function" then
+	pcall(syn.protect_gui, Orion)
 end
+Orion.Parent = GuiParent
 
-if gethui then
-	for _, Interface in ipairs(gethui():GetChildren()) do
-		if Interface.Name == Orion.Name and Interface ~= Orion then
-			Interface:Destroy()
-		end
-	end
-else
-	for _, Interface in ipairs(game.CoreGui:GetChildren()) do
-		if Interface.Name == Orion.Name and Interface ~= Orion then
-			Interface:Destroy()
-		end
+for _, Interface in ipairs(GuiParent:GetChildren()) do
+	if Interface.Name == Orion.Name and Interface ~= Orion then
+		Interface:Destroy()
 	end
 end
 
 function OrionLib:IsRunning()
-	if gethui then
-		return Orion.Parent == gethui()
-	else
-		return Orion.Parent == game:GetService("CoreGui")
-	end
-
+	return Orion.Parent == GuiParent
 end
 
 local function AddConnection(Signal, Function)
@@ -89,7 +96,7 @@ end
 
 task.spawn(function()
 	while (OrionLib:IsRunning()) do
-		wait()
+		task.wait()
 	end
 
 	for _, Connection in next, OrionLib.Connections do
@@ -100,28 +107,27 @@ end)
 local function AddDraggingFunctionality(DragPoint, Main)
 	pcall(function()
 		local Dragging, DragInput, MousePos, FramePos = false
-		DragPoint.InputBegan:Connect(function(Input)
-			if Input.UserInputType == Enum.UserInputType.MouseButton1 then
+		AddConnection(DragPoint.InputBegan, function(Input)
+			if IsPointerInput(Input) then
 				Dragging = true
 				MousePos = Input.Position
 				FramePos = Main.Position
-
-				Input.Changed:Connect(function()
-					if Input.UserInputState == Enum.UserInputState.End then
-						Dragging = false
-					end
-				end)
 			end
 		end)
-		DragPoint.InputChanged:Connect(function(Input)
-			if Input.UserInputType == Enum.UserInputType.MouseMovement then
+		AddConnection(DragPoint.InputChanged, function(Input)
+			if Input.UserInputType == Enum.UserInputType.MouseMovement or Input.UserInputType == Enum.UserInputType.Touch then
 				DragInput = Input
 			end
 		end)
-		UserInputService.InputChanged:Connect(function(Input)
+		AddConnection(UserInputService.InputChanged, function(Input)
 			if Input == DragInput and Dragging then
 				local Delta = Input.Position - MousePos
-				TweenService:Create(Main, TweenInfo.new(0.45, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Position  = UDim2.new(FramePos.X.Scale,FramePos.X.Offset + Delta.X, FramePos.Y.Scale, FramePos.Y.Offset + Delta.Y)}):Play()
+				Main.Position = UDim2.new(FramePos.X.Scale, FramePos.X.Offset + Delta.X, FramePos.Y.Scale, FramePos.Y.Offset + Delta.Y)
+			end
+		end)
+		AddConnection(UserInputService.InputEnded, function(Input)
+			if IsPointerInput(Input) then
+				Dragging = false
 			end
 		end)
 	end)
@@ -150,16 +156,16 @@ local function MakeElement(ElementName, ...)
 end
 
 local function SetProps(Element, Props)
-	table.foreach(Props, function(Property, Value)
+	for Property, Value in pairs(Props) do
 		Element[Property] = Value
-	end)
+	end
 	return Element
 end
 
 local function SetChildren(Element, Children)
-	table.foreach(Children, function(_, Child)
+	for _, Child in pairs(Children) do
 		Child.Parent = Element
-	end)
+	end
 	return Element
 end
 
@@ -198,10 +204,35 @@ end
 
 local function SetTheme()
 	for Name, Type in pairs(OrionLib.ThemeObjects) do
-		for _, Object in pairs(Type) do
-			Object[ReturnProperty(Object)] = OrionLib.Themes[OrionLib.SelectedTheme][Name]
+		for Index = #Type, 1, -1 do
+			local Object = Type[Index]
+			local Property = Object and ReturnProperty(Object)
+			if not Object or not Object.Parent or not Property then
+				table.remove(Type, Index)
+			else
+				Object[Property] = OrionLib.Themes[OrionLib.SelectedTheme][Name]
+			end
 		end    
 	end    
+end
+
+function OrionLib:RegisterTheme(Name, Theme)
+	if type(Name) ~= "string" or type(Theme) ~= "table" then
+		return false
+	end
+
+	OrionLib.Themes[Name] = Theme
+	return true
+end
+
+function OrionLib:SetTheme(Name)
+	if not OrionLib.Themes[Name] then
+		return false
+	end
+
+	OrionLib.SelectedTheme = Name
+	SetTheme()
+	return true
 end
 
 local function PackColor(Color)
@@ -214,33 +245,39 @@ end
 
 local function LoadCfg(Config)
 	local Data = HttpService:JSONDecode(Config)
-	table.foreach(Data, function(a,b)
-		if OrionLib.Flags[a] then
-			spawn(function() 
-				if OrionLib.Flags[a].Type == "Colorpicker" then
-					OrionLib.Flags[a]:Set(UnpackColor(b))
+	for FlagName, Value in pairs(Data) do
+		if OrionLib.Flags[FlagName] then
+			task.spawn(function()
+				if OrionLib.Flags[FlagName].Type == "Colorpicker" then
+					OrionLib.Flags[FlagName]:Set(UnpackColor(Value))
 				else
-					OrionLib.Flags[a]:Set(b)
+					OrionLib.Flags[FlagName]:Set(Value)
 				end    
 			end)
 		else
-			warn("Orion Library Config Loader - Could not find ", a ,b)
+			warn("Orion Library Config Loader - Could not find ", FlagName, Value)
 		end
-	end)
+	end
 end
 
 local function SaveCfg(Name)
-	local Data = {}
-	for i,v in pairs(OrionLib.Flags) do
-		if v.Save then
-			if v.Type == "Colorpicker" then
-				Data[i] = PackColor(v.Value)
-			else
-				Data[i] = v.Value
-			end
-		end	
+	if not HasFileSystem() or not OrionLib.Folder then
+		return false
 	end
-	writefile(OrionLib.Folder .. "/" .. Name .. ".txt", tostring(HttpService:JSONEncode(Data)))
+
+	local Data = {}
+	for FlagName, Flag in pairs(OrionLib.Flags) do
+		if Flag.Save then
+			if Flag.Type == "Colorpicker" then
+				Data[FlagName] = PackColor(Flag.Value)
+			else
+				Data[FlagName] = Flag.Value
+			end
+		end
+	end
+
+	local Success = pcall(writefile, OrionLib.Folder .. "/" .. Name .. ".txt", HttpService:JSONEncode(Data))
+	return Success
 end
 
 local WhitelistedMouse = {Enum.UserInputType.MouseButton1, Enum.UserInputType.MouseButton2,Enum.UserInputType.MouseButton3}
@@ -388,7 +425,8 @@ local NotificationHolder = SetProps(SetChildren(MakeElement("TFrame"), {
 })
 
 function OrionLib:MakeNotification(NotificationConfig)
-	spawn(function()
+	NotificationConfig = NotificationConfig or {}
+	task.spawn(function()
 		NotificationConfig.Name = NotificationConfig.Name or "Notification"
 		NotificationConfig.Content = NotificationConfig.Content or "Test"
 		NotificationConfig.Image = NotificationConfig.Image or "rbxassetid://4384403532"
@@ -431,25 +469,31 @@ function OrionLib:MakeNotification(NotificationConfig)
 			})
 		})
 
+		if OrionLib.PerformanceMode then
+			task.wait(NotificationConfig.Time)
+			NotificationFrame:Destroy()
+			return
+		end
+
 		TweenService:Create(NotificationFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quint), {Position = UDim2.new(0, 0, 0, 0)}):Play()
 
-		wait(NotificationConfig.Time - 0.88)
+		task.wait(math.max(NotificationConfig.Time - 0.88, 0))
 		TweenService:Create(NotificationFrame.Icon, TweenInfo.new(0.4, Enum.EasingStyle.Quint), {ImageTransparency = 1}):Play()
 		TweenService:Create(NotificationFrame, TweenInfo.new(0.8, Enum.EasingStyle.Quint), {BackgroundTransparency = 0.6}):Play()
-		wait(0.3)
+		task.wait(0.3)
 		TweenService:Create(NotificationFrame.UIStroke, TweenInfo.new(0.6, Enum.EasingStyle.Quint), {Transparency = 0.9}):Play()
 		TweenService:Create(NotificationFrame.Title, TweenInfo.new(0.6, Enum.EasingStyle.Quint), {TextTransparency = 0.4}):Play()
 		TweenService:Create(NotificationFrame.Content, TweenInfo.new(0.6, Enum.EasingStyle.Quint), {TextTransparency = 0.5}):Play()
-		wait(0.05)
+		task.wait(0.05)
 
 		NotificationFrame:TweenPosition(UDim2.new(1, 20, 0, 0),'In','Quint',0.8,true)
-		wait(1.35)
+		task.wait(1.35)
 		NotificationFrame:Destroy()
 	end)
 end    
 
 function OrionLib:Init()
-	if OrionLib.SaveCfg then	
+	if OrionLib.SaveCfg and HasFileSystem() then
 		pcall(function()
 			if isfile(OrionLib.Folder .. "/" .. game.GameId .. ".txt") then
 				LoadCfg(readfile(OrionLib.Folder .. "/" .. game.GameId .. ".txt"))
@@ -466,7 +510,6 @@ end
 function OrionLib:MakeWindow(WindowConfig)
 	local FirstTab = true
 	local Minimized = false
-	local Loaded = false
 	local UIHidden = false
 
 	WindowConfig = WindowConfig or {}
@@ -474,8 +517,11 @@ function OrionLib:MakeWindow(WindowConfig)
 	WindowConfig.ConfigFolder = WindowConfig.ConfigFolder or WindowConfig.Name
 	WindowConfig.SaveConfig = WindowConfig.SaveConfig or false
 	WindowConfig.HidePremium = WindowConfig.HidePremium or false
+	if WindowConfig.PerformanceMode == nil then
+		WindowConfig.PerformanceMode = IsMobile
+	end
 	if WindowConfig.IntroEnabled == nil then
-		WindowConfig.IntroEnabled = true
+		WindowConfig.IntroEnabled = not WindowConfig.PerformanceMode
 	end
 	WindowConfig.IntroText = WindowConfig.IntroText or "Orion Library"
 	WindowConfig.CloseCallback = WindowConfig.CloseCallback or function() end
@@ -484,40 +530,22 @@ function OrionLib:MakeWindow(WindowConfig)
 	WindowConfig.IntroIcon = WindowConfig.IntroIcon or "rbxassetid://8834748103"
 	OrionLib.Folder = WindowConfig.ConfigFolder
 	OrionLib.SaveCfg = WindowConfig.SaveConfig
+	OrionLib.PerformanceMode = WindowConfig.PerformanceMode
+	if type(WindowConfig.Theme) == "table" then
+		OrionLib:RegisterTheme("Window", WindowConfig.Theme)
+		OrionLib:SetTheme("Window")
+	elseif type(WindowConfig.Theme) == "string" then
+		OrionLib:SetTheme(WindowConfig.Theme)
+	end
 
-	pcall(function()
-		local fetchSuccess, fetchResult = pcall((game :: any).HttpGet, game, "https://raw.githubusercontent.com/SiriusSoftwareLtd/Rayfield/refs/heads/main/reporter.lua")
-		if fetchSuccess and #fetchResult > 0 then
-			local execSuccess, Analytics = pcall(function()
-				return (loadstring(fetchResult) :: any)()
-			end)
-			if execSuccess and Analytics then
-				local reporter = Analytics.new({
-					url          = "https://rayfield-collect.sirius-software-ltd.workers.dev",
-					token        = "e1712bdd9e7aafe203236be61f472609e5ec8efad62aa86244b96aaca0c22267",
-					product_name = "Orion",
-					category     = "UILibrary",
-				})
-				pcall(function()
-					reporter:windowCreated({
-						script_name       = WindowConfig.Name,
-						script_version    = 'Orion Stable',
-						interface_version = 'Orion UI Stable',
-						config_saving     = WindowConfig.SaveConfig,
-					})
-				end)
-			end
-		end
-	end)
-
-	if WindowConfig.SaveConfig then
+	if WindowConfig.SaveConfig and HasFileSystem() then
 		if not isfolder(WindowConfig.ConfigFolder) then
 			makefolder(WindowConfig.ConfigFolder)
 		end	
 	end
 
 	local TabHolder = AddThemeObject(SetChildren(SetProps(MakeElement("ScrollFrame", Color3.fromRGB(255, 255, 255), 4), {
-		Size = UDim2.new(1, 0, 1, -50)
+		Size = UDim2.new(0, IsMobile and 112 or 150, 1, -50)
 	}), {
 		MakeElement("List"),
 		MakeElement("Padding", 8, 0, 0, 8)
@@ -554,7 +582,7 @@ function OrionLib:MakeWindow(WindowConfig)
 	})
 
 	local WindowStuff = AddThemeObject(SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(255, 255, 255), 0, 10), {
-		Size = UDim2.new(0, 150, 1, -50),
+		Size = UDim2.new(0, IsMobile and 112 or 150, 1, -50),
 		Position = UDim2.new(0, 0, 0, 50)
 	}), {
 		AddThemeObject(SetProps(MakeElement("Frame"), {
@@ -626,10 +654,15 @@ function OrionLib:MakeWindow(WindowConfig)
 
 	local MainWindow = AddThemeObject(SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(255, 255, 255), 0, 10), {
 		Parent = Orion,
-		Position = UDim2.new(0.5, -307, 0.5, -172),
-		Size = UDim2.new(0, 615, 0, 344),
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, 0, 0.5, 0),
+		Size = UDim2.new(1, -20, 1, -20),
 		ClipsDescendants = true
 	}), {
+		Create("UISizeConstraint", {
+			MinSize = Vector2.new(280, 220),
+			MaxSize = Vector2.new(615, 344)
+		}),
 		--SetProps(MakeElement("Image", "rbxassetid://3523728077"), {
 		--	AnchorPoint = Vector2.new(0.5, 0.5),
 		--	Position = UDim2.new(0.5, 0, 0.5, 0),
@@ -671,9 +704,38 @@ function OrionLib:MakeWindow(WindowConfig)
 
 	AddDraggingFunctionality(DragPoint, MainWindow)
 
+	local MobileReopen
+	if IsMobile then
+		local ReopenClick = MakeElement("Button")
+		MobileReopen = AddThemeObject(SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(32, 32, 32), 0, 6), {
+			Parent = Orion,
+			AnchorPoint = Vector2.new(1, 1),
+			Position = UDim2.new(1, -16, 1, -16),
+			Size = UDim2.new(0, 96, 0, 34),
+			Visible = false,
+			ZIndex = 20
+		}), {
+			AddThemeObject(SetProps(MakeElement("Label", "Open Orion", 13), {
+				Size = UDim2.new(1, 0, 1, 0),
+				TextXAlignment = Enum.TextXAlignment.Center,
+				ZIndex = 21
+			}), "Text"),
+			AddThemeObject(MakeElement("Stroke"), "Stroke"),
+			ReopenClick
+		}), "Second")
+		AddConnection(ReopenClick.MouseButton1Click, function()
+			MainWindow.Visible = true
+			UIHidden = false
+			MobileReopen.Visible = false
+		end)
+	end
+
 	AddConnection(CloseBtn.MouseButton1Up, function()
 		MainWindow.Visible = false
 		UIHidden = true
+		if MobileReopen then
+			MobileReopen.Visible = true
+		end
 		OrionLib:MakeNotification({
 			Name = "Interface Hidden",
 			Content = "Tap RightShift to reopen the interface",
@@ -685,14 +747,17 @@ function OrionLib:MakeWindow(WindowConfig)
 	AddConnection(UserInputService.InputBegan, function(Input)
 		if Input.KeyCode == Enum.KeyCode.RightShift and UIHidden then
 			MainWindow.Visible = true
+			if MobileReopen then
+				MobileReopen.Visible = false
+			end
 		end
 	end)
 
 	AddConnection(MinimizeBtn.MouseButton1Up, function()
 		if Minimized then
-			TweenService:Create(MainWindow, TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Size = UDim2.new(0, 615, 0, 344)}):Play()
+			TweenService:Create(MainWindow, TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Size = UDim2.new(1, -20, 1, -20)}):Play()
 			MinimizeBtn.Ico.Image = "rbxassetid://7072719338"
-			wait(.02)
+			task.wait(.02)
 			MainWindow.ClipsDescendants = false
 			WindowStuff.Visible = true
 			WindowTopBarLine.Visible = true
@@ -702,7 +767,7 @@ function OrionLib:MakeWindow(WindowConfig)
 			MinimizeBtn.Ico.Image = "rbxassetid://7072720870"
 
 			TweenService:Create(MainWindow, TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Size = UDim2.new(0, WindowName.TextBounds.X + 140, 0, 50)}):Play()
-			wait(0.1)
+			task.wait(0.1)
 			WindowStuff.Visible = false	
 		end
 		Minimized = not Minimized    
@@ -730,11 +795,11 @@ function OrionLib:MakeWindow(WindowConfig)
 		})
 
 		TweenService:Create(LoadSequenceLogo, TweenInfo.new(.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {ImageTransparency = 0, Position = UDim2.new(0.5, 0, 0.5, 0)}):Play()
-		wait(0.8)
+		task.wait(0.8)
 		TweenService:Create(LoadSequenceLogo, TweenInfo.new(.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Position = UDim2.new(0.5, -(LoadSequenceText.TextBounds.X/2), 0.5, 0)}):Play()
-		wait(0.3)
+		task.wait(0.3)
 		TweenService:Create(LoadSequenceText, TweenInfo.new(.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {TextTransparency = 0}):Play()
-		wait(2)
+		task.wait(2)
 		TweenService:Create(LoadSequenceText, TweenInfo.new(.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {TextTransparency = 1}):Play()
 		MainWindow.Visible = true
 		LoadSequenceLogo:Destroy()
@@ -777,8 +842,8 @@ function OrionLib:MakeWindow(WindowConfig)
 		end	
 
 		local Container = AddThemeObject(SetChildren(SetProps(MakeElement("ScrollFrame", Color3.fromRGB(255, 255, 255), 5), {
-			Size = UDim2.new(1, -150, 1, -50),
-			Position = UDim2.new(0, 150, 0, 50),
+			Size = UDim2.new(1, -(IsMobile and 112 or 150), 1, -50),
+			Position = UDim2.new(0, IsMobile and 112 or 150, 0, 50),
 			Parent = MainWindow,
 			Visible = false,
 			Name = "ItemContainer"
@@ -820,6 +885,142 @@ function OrionLib:MakeWindow(WindowConfig)
 
 		local function GetElements(ItemParent)
 			local ElementFunction = {}
+			function ElementFunction:AddCustom(Object, Properties)
+				if not Object or not Object:IsA("GuiObject") then
+					return nil
+				end
+
+				SetProps(Object, Properties or {})
+				Object.Parent = ItemParent
+				return Object
+			end
+
+			function ElementFunction:AddCircle(CircleConfig)
+				CircleConfig = CircleConfig or {}
+				CircleConfig.Size = CircleConfig.Size or UDim2.new(0, 48, 0, 48)
+				CircleConfig.Color = CircleConfig.Color or OrionLib.Themes[OrionLib.SelectedTheme].Second
+				CircleConfig.Stroke = CircleConfig.Stroke or OrionLib.Themes[OrionLib.SelectedTheme].Stroke
+				CircleConfig.Text = CircleConfig.Text or ""
+
+				local Circle = AddThemeObject(SetChildren(SetProps(MakeElement("RoundFrame", CircleConfig.Color, 1, 0), {
+					Size = CircleConfig.Size,
+					Parent = ItemParent
+				}), {
+					SetProps(MakeElement("Label", CircleConfig.Text, CircleConfig.TextSize or 14), {
+						Size = UDim2.new(1, 0, 1, 0),
+						TextXAlignment = Enum.TextXAlignment.Center,
+						TextYAlignment = Enum.TextYAlignment.Center,
+						Name = "Content"
+					}),
+					MakeElement("Stroke", CircleConfig.Stroke, CircleConfig.Thickness or 1)
+				}), "Second")
+
+				return Circle
+			end
+
+			function ElementFunction:AddDivider(DividerConfig)
+				DividerConfig = DividerConfig or {}
+				local Divider = AddThemeObject(SetProps(MakeElement("Frame"), {
+					Size = DividerConfig.Size or UDim2.new(1, 0, 0, 1),
+					BackgroundTransparency = DividerConfig.Transparency or 0,
+					Parent = ItemParent
+				}), "Divider")
+				return Divider
+			end
+
+			function ElementFunction:AddPanel(PanelConfig)
+				PanelConfig = PanelConfig or {}
+				PanelConfig.Size = PanelConfig.Size or UDim2.new(1, 0, 0, 56)
+				PanelConfig.Color = PanelConfig.Color or OrionLib.Themes[OrionLib.SelectedTheme].Second
+				PanelConfig.Stroke = PanelConfig.Stroke or OrionLib.Themes[OrionLib.SelectedTheme].Stroke
+				PanelConfig.CornerRadius = PanelConfig.CornerRadius or 8
+				PanelConfig.Text = PanelConfig.Text or ""
+				PanelConfig.TextSize = PanelConfig.TextSize or 14
+				PanelConfig.Shape = PanelConfig.Shape or "Rounded"
+
+				local IsCircle = PanelConfig.Shape == "Circle"
+				local Panel = AddThemeObject(SetChildren(SetProps(MakeElement("RoundFrame", PanelConfig.Color, IsCircle and 1 or 0, IsCircle and 0 or PanelConfig.CornerRadius), {
+					Size = PanelConfig.Size,
+					BackgroundTransparency = PanelConfig.Transparency or 0,
+					Parent = ItemParent
+				}), {
+					AddThemeObject(SetProps(MakeElement("Label", PanelConfig.Text, PanelConfig.TextSize), {
+						Size = UDim2.new(1, -24, 1, 0),
+						Position = UDim2.new(0, 12, 0, 0),
+						TextXAlignment = PanelConfig.TextXAlignment or Enum.TextXAlignment.Left,
+						TextYAlignment = Enum.TextYAlignment.Center,
+						Name = "Content"
+					}), "Text"),
+					MakeElement("Stroke", PanelConfig.Stroke, PanelConfig.Thickness or 1)
+				}), "Second")
+
+				local PanelButton
+				if type(PanelConfig.Callback) == "function" then
+					PanelButton = SetProps(MakeElement("Button"), {
+						Size = UDim2.new(1, 0, 1, 0),
+						Parent = Panel
+					})
+					AddConnection(PanelButton.MouseButton1Click, PanelConfig.Callback)
+				end
+
+				function Panel:SetText(Text)
+					Panel.Content.Text = Text or ""
+				end
+
+				return Panel, PanelButton
+			end
+
+			function ElementFunction:AddProgressBar(ProgressConfig)
+				ProgressConfig = ProgressConfig or {}
+				ProgressConfig.Name = ProgressConfig.Name or "Progress"
+				ProgressConfig.Min = ProgressConfig.Min or 0
+				ProgressConfig.Max = ProgressConfig.Max or 100
+				ProgressConfig.Value = ProgressConfig.Value or ProgressConfig.Min
+				ProgressConfig.Color = ProgressConfig.Color or Color3.fromRGB(60, 140, 230)
+
+				local ProgressFrame = AddThemeObject(SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(255, 255, 255), 0, 5), {
+					Size = UDim2.new(1, 0, 0, 58),
+					Parent = ItemParent
+				}), {
+					AddThemeObject(SetProps(MakeElement("Label", ProgressConfig.Name, 14), {
+						Size = UDim2.new(0.7, 0, 0, 16),
+						Position = UDim2.new(0, 12, 0, 8),
+						Font = Enum.Font.GothamBold,
+						Name = "Title"
+					}), "Text"),
+					AddThemeObject(SetProps(MakeElement("Label", "", 13), {
+						Size = UDim2.new(0.3, -12, 0, 16),
+						Position = UDim2.new(0.7, 0, 0, 8),
+						TextXAlignment = Enum.TextXAlignment.Right,
+						Name = "Value"
+					}), "TextDark"),
+					AddThemeObject(MakeElement("Stroke"), "Stroke"),
+					SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(45, 45, 45), 0, 4), {
+						Size = UDim2.new(1, -24, 0, 12),
+						Position = UDim2.new(0, 12, 0, 34),
+						ClipsDescendants = true,
+						Name = "Bar"
+					}), {
+						SetProps(MakeElement("RoundFrame", ProgressConfig.Color, 0, 4), {
+							Size = UDim2.new(0, 0, 1, 0),
+							Name = "Fill"
+						})
+					})
+				}), "Second")
+
+				local Progress = {Value = ProgressConfig.Value}
+				function Progress:Set(Value)
+					local Range = ProgressConfig.Max - ProgressConfig.Min
+					Progress.Value = math.clamp(Value, ProgressConfig.Min, ProgressConfig.Max)
+					local Scale = Range == 0 and 1 or (Progress.Value - ProgressConfig.Min) / Range
+					ProgressFrame.Bar.Fill.Size = UDim2.fromScale(Scale, 1)
+					ProgressFrame.Value.Text = string.format("%.0f%%", Scale * 100)
+				end
+
+				Progress:Set(Progress.Value)
+				return Progress
+			end
+
 			function ElementFunction:AddLabel(Text)
 				local LabelFrame = AddThemeObject(SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(255, 255, 255), 0, 5), {
 					Size = UDim2.new(1, 0, 0, 30),
@@ -919,7 +1120,7 @@ function OrionLib:MakeWindow(WindowConfig)
 
 				AddConnection(Click.MouseButton1Up, function()
 					TweenService:Create(ButtonFrame, TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {BackgroundColor3 = Color3.fromRGB(OrionLib.Themes[OrionLib.SelectedTheme].Second.R * 255 + 3, OrionLib.Themes[OrionLib.SelectedTheme].Second.G * 255 + 3, OrionLib.Themes[OrionLib.SelectedTheme].Second.B * 255 + 3)}):Play()
-					spawn(function()
+					task.spawn(function()
 						ButtonConfig.Callback()
 					end)
 				end)
@@ -940,7 +1141,6 @@ function OrionLib:MakeWindow(WindowConfig)
 				ToggleConfig.Default = ToggleConfig.Default or false
 				ToggleConfig.Callback = ToggleConfig.Callback or function() end
 				ToggleConfig.Color = ToggleConfig.Color or Color3.fromRGB(9, 99, 195)
-				ToggleConfig.Flag = ToggleConfig.Flag or nil
 				ToggleConfig.Save = ToggleConfig.Save or false
 
 				local Toggle = {Value = ToggleConfig.Default, Save = ToggleConfig.Save}
@@ -1022,11 +1222,13 @@ function OrionLib:MakeWindow(WindowConfig)
 				SliderConfig.Min = SliderConfig.Min or 0
 				SliderConfig.Max = SliderConfig.Max or 100
 				SliderConfig.Increment = SliderConfig.Increment or 1
+				if SliderConfig.Increment <= 0 then
+					SliderConfig.Increment = 1
+				end
 				SliderConfig.Default = SliderConfig.Default or 50
 				SliderConfig.Callback = SliderConfig.Callback or function() end
 				SliderConfig.ValueName = SliderConfig.ValueName or ""
 				SliderConfig.Color = SliderConfig.Color or Color3.fromRGB(9, 149, 98)
-				SliderConfig.Flag = SliderConfig.Flag or nil
 				SliderConfig.Save = SliderConfig.Save or false
 
 				local Slider = {Value = SliderConfig.Default, Save = SliderConfig.Save}
@@ -1078,28 +1280,34 @@ function OrionLib:MakeWindow(WindowConfig)
 					SliderBar
 				}), "Second")
 
-				SliderBar.InputBegan:Connect(function(Input)
-					if Input.UserInputType == Enum.UserInputType.MouseButton1 then 
-						Dragging = true 
-					end 
-				end)
-				SliderBar.InputEnded:Connect(function(Input) 
-					if Input.UserInputType == Enum.UserInputType.MouseButton1 then 
-						Dragging = false 
-					end 
-				end)
-
-				UserInputService.InputChanged:Connect(function(Input)
-					if Dragging and Input.UserInputType == Enum.UserInputType.MouseMovement then 
+				local function SetSliderFromInput(Input)
 						local SizeScale = math.clamp((Input.Position.X - SliderBar.AbsolutePosition.X) / SliderBar.AbsoluteSize.X, 0, 1)
 						Slider:Set(SliderConfig.Min + ((SliderConfig.Max - SliderConfig.Min) * SizeScale)) 
 						SaveCfg(game.GameId)
+				end
+
+				AddConnection(SliderBar.InputBegan, function(Input)
+					if IsPointerInput(Input) then
+						Dragging = true
+						SetSliderFromInput(Input)
+					end
+				end)
+				AddConnection(UserInputService.InputChanged, function(Input)
+					if Dragging and (Input.UserInputType == Enum.UserInputType.MouseMovement or Input.UserInputType == Enum.UserInputType.Touch) then
+						SetSliderFromInput(Input)
+					end
+				end)
+				AddConnection(UserInputService.InputEnded, function(Input)
+					if IsPointerInput(Input) then
+						Dragging = false
 					end
 				end)
 
 				function Slider:Set(Value)
 					self.Value = math.clamp(Round(Value, SliderConfig.Increment), SliderConfig.Min, SliderConfig.Max)
-					TweenService:Create(SliderDrag,TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),{Size = UDim2.fromScale((self.Value - SliderConfig.Min) / (SliderConfig.Max - SliderConfig.Min), 1)}):Play()
+					local Range = SliderConfig.Max - SliderConfig.Min
+					local Progress = Range == 0 and 1 or (self.Value - SliderConfig.Min) / Range
+					TweenService:Create(SliderDrag,TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),{Size = UDim2.fromScale(Progress, 1)}):Play()
 					SliderBar.Value.Text = tostring(self.Value) .. " " .. SliderConfig.ValueName
 					SliderDrag.Value.Text = tostring(self.Value) .. " " .. SliderConfig.ValueName
 					SliderConfig.Callback(self.Value)
@@ -1117,7 +1325,6 @@ function OrionLib:MakeWindow(WindowConfig)
 				DropdownConfig.Options = DropdownConfig.Options or {}
 				DropdownConfig.Default = DropdownConfig.Default or ""
 				DropdownConfig.Callback = DropdownConfig.Callback or function() end
-				DropdownConfig.Flag = DropdownConfig.Flag or nil
 				DropdownConfig.Save = DropdownConfig.Save or false
 
 				local Dropdown = {Value = DropdownConfig.Default, Options = DropdownConfig.Options, Buttons = {}, Toggled = false, Type = "Dropdown", Save = DropdownConfig.Save}
@@ -1267,11 +1474,11 @@ function OrionLib:MakeWindow(WindowConfig)
 				return Dropdown
 			end
 			function ElementFunction:AddBind(BindConfig)
+				BindConfig = BindConfig or {}
 				BindConfig.Name = BindConfig.Name or "Bind"
 				BindConfig.Default = BindConfig.Default or Enum.KeyCode.Unknown
 				BindConfig.Hold = BindConfig.Hold or false
 				BindConfig.Callback = BindConfig.Callback or function() end
-				BindConfig.Flag = BindConfig.Flag or nil
 				BindConfig.Save = BindConfig.Save or false
 
 				local Bind = {Value, Binding = false, Type = "Bind", Save = BindConfig.Save}
@@ -1309,17 +1516,74 @@ function OrionLib:MakeWindow(WindowConfig)
 					BindBox,
 					Click
 				}), "Second")
+				local BindKeyboard
+
+				if IsMobile then
+					local KeyboardKeys = {
+						"Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P",
+						"A", "S", "D", "F", "G", "H", "J", "K", "L",
+						"Z", "X", "C", "V", "B", "N", "M", "Space",
+						"LeftShift", "LeftControl", "LeftAlt", "RightShift", "RightControl", "RightAlt",
+						"Tab", "Enter", "Backspace", "Delete", "Escape", "Up", "Down", "Left", "Right"
+					}
+					local KeyboardGrid = Create("UIGridLayout", {
+						CellPadding = UDim2.new(0, 4, 0, 4),
+						CellSize = UDim2.new(0, 42, 0, 30),
+						FillDirectionMaxCells = 6,
+						SortOrder = Enum.SortOrder.LayoutOrder
+					})
+					BindKeyboard = AddThemeObject(SetChildren(SetProps(MakeElement("ScrollFrame", Color3.fromRGB(25, 25, 25), 4), {
+						Parent = Orion,
+						AnchorPoint = Vector2.new(0.5, 1),
+						Position = UDim2.new(0.5, 0, 1, -12),
+						Size = UDim2.new(0.9, 0, 0, 174),
+						Visible = false,
+						ZIndex = 30
+					}), {
+						MakeElement("Padding", 8, 8, 8, 8),
+						KeyboardGrid
+					}), "Main")
+
+					AddConnection(KeyboardGrid:GetPropertyChangedSignal("AbsoluteContentSize"), function()
+						BindKeyboard.CanvasSize = UDim2.new(0, 0, 0, KeyboardGrid.AbsoluteContentSize.Y + 16)
+					end)
+
+					for _, KeyName in ipairs(KeyboardKeys) do
+						local KeyClick = MakeElement("Button")
+						local KeyFrame = AddThemeObject(SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(32, 32, 32), 0, 4), {
+							Size = UDim2.new(0, 42, 0, 30),
+							ZIndex = 31
+						}), {
+							AddThemeObject(SetProps(MakeElement("Label", KeyName:gsub("Left", "L "):gsub("Control", "Ctrl"):gsub("Backspace", "Bksp"), 11), {
+								Size = UDim2.new(1, 0, 1, 0),
+								TextXAlignment = Enum.TextXAlignment.Center,
+								ZIndex = 32
+							}), "Text"),
+							KeyClick
+						}), "Second")
+						KeyFrame.Parent = BindKeyboard
+						KeyClick.Size = UDim2.new(1, 0, 1, 0)
+						KeyClick.ZIndex = 33
+						AddConnection(KeyClick.MouseButton1Click, function()
+							Bind:Set(Enum.KeyCode[KeyName])
+							BindKeyboard.Visible = false
+							SaveCfg(game.GameId)
+						end)
+					end
+				end
 
 				AddConnection(BindBox.Value:GetPropertyChangedSignal("Text"), function()
-					--BindBox.Size = UDim2.new(0, BindBox.Value.TextBounds.X + 16, 0, 24)
 					TweenService:Create(BindBox, TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Size = UDim2.new(0, BindBox.Value.TextBounds.X + 16, 0, 24)}):Play()
 				end)
 
 				AddConnection(Click.InputEnded, function(Input)
-					if Input.UserInputType == Enum.UserInputType.MouseButton1 then
+					if IsPointerInput(Input) then
 						if Bind.Binding then return end
 						Bind.Binding = true
 						BindBox.Value.Text = ""
+						if BindKeyboard then
+							BindKeyboard.Visible = true
+						end
 					end
 				end)
 
@@ -1334,16 +1598,12 @@ function OrionLib:MakeWindow(WindowConfig)
 						end
 					elseif Bind.Binding then
 						local Key
-						pcall(function()
-							if not CheckKey(BlacklistedKeys, Input.KeyCode) then
-								Key = Input.KeyCode
-							end
-						end)
-						pcall(function()
-							if CheckKey(WhitelistedMouse, Input.UserInputType) and not Key then
-								Key = Input.UserInputType
-							end
-						end)
+						if not CheckKey(BlacklistedKeys, Input.KeyCode) then
+							Key = Input.KeyCode
+						end
+						if CheckKey(WhitelistedMouse, Input.UserInputType) and not Key then
+							Key = Input.UserInputType
+						end
 						Key = Key or Bind.Value
 						Bind:Set(Key)
 						SaveCfg(game.GameId)
@@ -1437,7 +1697,6 @@ function OrionLib:MakeWindow(WindowConfig)
 				}), "Second")
 
 				AddConnection(TextboxActual:GetPropertyChangedSignal("Text"), function()
-					--TextContainer.Size = UDim2.new(0, TextboxActual.TextBounds.X + 16, 0, 24)
 					TweenService:Create(TextContainer, TweenInfo.new(0.45, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Size = UDim2.new(0, TextboxActual.TextBounds.X + 16, 0, 24)}):Play()
 				end)
 
@@ -1472,11 +1731,11 @@ function OrionLib:MakeWindow(WindowConfig)
 				ColorpickerConfig.Name = ColorpickerConfig.Name or "Colorpicker"
 				ColorpickerConfig.Default = ColorpickerConfig.Default or Color3.fromRGB(255,255,255)
 				ColorpickerConfig.Callback = ColorpickerConfig.Callback or function() end
-				ColorpickerConfig.Flag = ColorpickerConfig.Flag or nil
 				ColorpickerConfig.Save = ColorpickerConfig.Save or false
 
 				local ColorH, ColorS, ColorV = 1, 1, 1
 				local Colorpicker = {Value = ColorpickerConfig.Default, Toggled = false, Type = "Colorpicker", Save = ColorpickerConfig.Save}
+				local ColorInput, HueInput
 
 				local ColorSelection = Create("ImageLabel", {
 					Size = UDim2.new(0, 18, 0, 18),
@@ -1583,7 +1842,6 @@ function OrionLib:MakeWindow(WindowConfig)
 					ColorpickerBox.BackgroundColor3 = Color3.fromHSV(ColorH, ColorS, ColorV)
 					Color.BackgroundColor3 = Color3.fromHSV(ColorH, 1, 1)
 					Colorpicker:Set(ColorpickerBox.BackgroundColor3)
-					ColorpickerConfig.Callback(ColorpickerBox.BackgroundColor3)
 					SaveCfg(game.GameId)
 				end
 
@@ -1592,13 +1850,12 @@ function OrionLib:MakeWindow(WindowConfig)
 				ColorV = 1 - (math.clamp(ColorSelection.AbsolutePosition.Y - Color.AbsolutePosition.Y, 0, Color.AbsoluteSize.Y) / Color.AbsoluteSize.Y)
 
 				AddConnection(Color.InputBegan, function(input)
-					if input.UserInputType == Enum.UserInputType.MouseButton1 then
-						if ColorInput then
-							ColorInput:Disconnect()
-						end
-						ColorInput = AddConnection(RunService.RenderStepped, function()
-							local ColorX = (math.clamp(Mouse.X - Color.AbsolutePosition.X, 0, Color.AbsoluteSize.X) / Color.AbsoluteSize.X)
-							local ColorY = (math.clamp(Mouse.Y - Color.AbsolutePosition.Y, 0, Color.AbsoluteSize.Y) / Color.AbsoluteSize.Y)
+					if IsPointerInput(input) then
+						if ColorInput then ColorInput:Disconnect() end
+						ColorInput = AddConnection(UserInputService.InputChanged, function(pointer)
+							if pointer.UserInputType ~= Enum.UserInputType.MouseMovement and pointer.UserInputType ~= Enum.UserInputType.Touch then return end
+							local ColorX = (math.clamp(pointer.Position.X - Color.AbsolutePosition.X, 0, Color.AbsoluteSize.X) / Color.AbsoluteSize.X)
+							local ColorY = (math.clamp(pointer.Position.Y - Color.AbsolutePosition.Y, 0, Color.AbsoluteSize.Y) / Color.AbsoluteSize.Y)
 							ColorSelection.Position = UDim2.new(ColorX, 0, ColorY, 0)
 							ColorS = ColorX
 							ColorV = 1 - ColorY
@@ -1608,7 +1865,7 @@ function OrionLib:MakeWindow(WindowConfig)
 				end)
 
 				AddConnection(Color.InputEnded, function(input)
-					if input.UserInputType == Enum.UserInputType.MouseButton1 then
+					if IsPointerInput(input) then
 						if ColorInput then
 							ColorInput:Disconnect()
 						end
@@ -1616,13 +1873,11 @@ function OrionLib:MakeWindow(WindowConfig)
 				end)
 
 				AddConnection(Hue.InputBegan, function(input)
-					if input.UserInputType == Enum.UserInputType.MouseButton1 then
-						if HueInput then
-							HueInput:Disconnect()
-						end;
-
-						HueInput = AddConnection(RunService.RenderStepped, function()
-							local HueY = (math.clamp(Mouse.Y - Hue.AbsolutePosition.Y, 0, Hue.AbsoluteSize.Y) / Hue.AbsoluteSize.Y)
+					if IsPointerInput(input) then
+						if HueInput then HueInput:Disconnect() end
+						HueInput = AddConnection(UserInputService.InputChanged, function(pointer)
+							if pointer.UserInputType ~= Enum.UserInputType.MouseMovement and pointer.UserInputType ~= Enum.UserInputType.Touch then return end
+							local HueY = (math.clamp(pointer.Position.Y - Hue.AbsolutePosition.Y, 0, Hue.AbsoluteSize.Y) / Hue.AbsoluteSize.Y)
 
 							HueSelection.Position = UDim2.new(0.5, 0, HueY, 0)
 							ColorH = 1 - HueY
@@ -1633,7 +1888,7 @@ function OrionLib:MakeWindow(WindowConfig)
 				end)
 
 				AddConnection(Hue.InputEnded, function(input)
-					if input.UserInputType == Enum.UserInputType.MouseButton1 then
+					if IsPointerInput(input) then
 						if HueInput then
 							HueInput:Disconnect()
 						end
@@ -1658,6 +1913,7 @@ function OrionLib:MakeWindow(WindowConfig)
 		local ElementFunction = {}
 
 		function ElementFunction:AddSection(SectionConfig)
+			SectionConfig = SectionConfig or {}
 			SectionConfig.Name = SectionConfig.Name or "Section"
 
 			local SectionFrame = SetChildren(SetProps(MakeElement("TFrame"), {
@@ -1703,7 +1959,7 @@ function OrionLib:MakeWindow(WindowConfig)
 			Container:FindFirstChild("UIPadding"):Destroy()
 			SetChildren(SetProps(MakeElement("TFrame"), {
 				Size = UDim2.new(1, 0, 1, 0),
-				Parent = ItemParent
+				Parent = Container
 			}), {
 				AddThemeObject(SetProps(MakeElement("Image", "rbxassetid://3610239960"), {
 					Size = UDim2.new(0, 18, 0, 18),
@@ -1720,13 +1976,14 @@ function OrionLib:MakeWindow(WindowConfig)
 					Position = UDim2.new(0, 84, 0, 110),
 				}), "Text"),
 				AddThemeObject(SetProps(MakeElement("Label", "Premium Features", 14), {
-					Size = UDim2.new(1, -150, 0, 14),
-					Position = UDim2.new(0, 150, 0, 112),
+					Size = UDim2.new(1, -(IsMobile and 150 or 200), 0, 14),
+					Position = UDim2.new(0, IsMobile and 150 or 200, 0, 112),
 					Font = Enum.Font.GothamBold
 				}), "Text"),
 				AddThemeObject(SetProps(MakeElement("Label", "This part of the script is locked to Sirius Premium users. Purchase Premium in the Discord server (sirius.menu/discord)", 12), {
-					Size = UDim2.new(1, -200, 0, 14),
-					Position = UDim2.new(0, 150, 0, 138),
+					Size = UDim2.new(1, -(IsMobile and 150 or 200), 0, 0),
+					Position = UDim2.new(0, IsMobile and 150 or 200, 0, 138),
+					AutomaticSize = Enum.AutomaticSize.Y,
 					TextWrapped = true,
 					TextTransparency = 0.4
 				}), "Text")
@@ -1734,14 +1991,6 @@ function OrionLib:MakeWindow(WindowConfig)
 		end
 		return ElementFunction   
 	end  
-	
-	OrionLib:MakeNotification({
-		Name = "UI Library Upgrade",
-		Content = "New UI Library Available at sirius.menu/discord and sirius.menu/rayfield",
-		Time = 5
-	})
-	
-
 	
 	return TabFunction
 end   
