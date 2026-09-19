@@ -66,15 +66,39 @@ local OrionLib = {
 --Feather Icons https://github.com/evoincorp/lucideblox/tree/master/src/modules/util - Created by 7kayoh
 local Icons = {}
 
-local Success, Response = pcall(function()
-	Icons = HttpService:JSONDecode(game:HttpGetAsync("https://raw.githubusercontent.com/evoincorp/lucideblox/master/src/modules/util/icons.json")).icons
-end)
+local function LoadIcons()
+	local Candidates = {
+		"https://raw.githubusercontent.com/evoincorp/lucideblox/master/src/modules/util/icons.json",
+		"https://raw.githubusercontent.com/7kayoh/lucideblox/master/src/modules/util/icons.json",
+		"https://cdn.jsdelivr.net/gh/evoincorp/lucideblox@master/src/modules/util/icons.json"
+	}
 
-if not Success then
-	warn("\nOrion Library - Failed to load Feather Icons. Error code: " .. Response .. "\n")
-end	
+	for _, Url in ipairs(Candidates) do
+		local Success, Response = pcall(function()
+			return HttpService:JSONDecode(game:HttpGetAsync(Url))
+		end)
+		if Success and type(Response) == "table" then
+			if Response.icons and type(Response.icons) == "table" then
+				return Response.icons
+			end
+			if Response["icons"] and type(Response["icons"]) == "table" then
+				return Response["icons"]
+			end
+		end
+	end
+
+	return {}
+end
+
+Icons = LoadIcons()
+if not next(Icons) then
+	warn("\nOrion Library - Failed to load Feather Icons. Using empty fallback icon set.\n")
+end
 
 local function GetIcon(IconName)
+	if type(IconName) ~= "string" then
+		return nil
+	end
 	return Icons[IconName]
 end   
 
@@ -711,29 +735,69 @@ function OrionLib:MakeWindow(WindowConfig)
 	}), "Main")
 
 	local BackgroundObject
-	local BackgroundEnabled = WindowConfig.BackgroundImage or WindowConfig.BackgroundVideo
-	if BackgroundEnabled then
-		if WindowConfig.BackgroundVideo then
+	local BackgroundLayer
+	local function ResolveBackgroundMedia(MediaConfig, FallbackType)
+		if type(MediaConfig) == "string" or type(MediaConfig) == "number" then
+			return {
+				Type = FallbackType or "image",
+				AssetId = MediaConfig
+			}
+		end
+		if type(MediaConfig) ~= "table" then
+			return nil
+		end
+		local Type = MediaConfig.Type or MediaConfig.Kind or MediaConfig.Mode or FallbackType or (MediaConfig.Video and "video" or "image")
+		local AssetId = MediaConfig.AssetId or MediaConfig.Id or MediaConfig.Value or MediaConfig.Image or MediaConfig.Video
+		if not AssetId then
+			return nil
+		end
+		return {
+			Type = Type,
+			AssetId = AssetId,
+			Looped = MediaConfig.Looped ~= false,
+			Playing = MediaConfig.Playing ~= false,
+			Transparency = MediaConfig.Transparency or MediaConfig.ImageTransparency or 0.35,
+			Volume = MediaConfig.Volume or 0
+		}
+	end
+
+	local InitialBackground = ResolveBackgroundMedia(WindowConfig.Background or WindowConfig.BackgroundMedia or WindowConfig.BackgroundConfig, WindowConfig.BackgroundType or (WindowConfig.BackgroundVideo and "video") or (WindowConfig.BackgroundImage and "image"))
+	if InitialBackground and InitialBackground.AssetId then
+		BackgroundLayer = Create("Frame", {
+			BackgroundTransparency = 1,
+			BorderSizePixel = 0,
+			Size = UDim2.fromScale(1, 1),
+			ZIndex = 0,
+			ClipsDescendants = true
+		})
+		BackgroundLayer.Parent = MainWindow
+		if InitialBackground.Type == "video" or WindowConfig.BackgroundVideo then
 			BackgroundObject = Create("VideoFrame", {
-				Video = ToAssetId(WindowConfig.BackgroundVideo),
-				Looped = WindowConfig.BackgroundLooped ~= false,
-				Playing = WindowConfig.BackgroundPlaying ~= false,
-				Volume = 0,
+				Video = ToAssetId(InitialBackground.AssetId),
+				Looped = InitialBackground.Looped,
+				Playing = InitialBackground.Playing,
+				Volume = InitialBackground.Volume,
 				BackgroundTransparency = 1,
 				Size = UDim2.fromScale(1, 1),
-				ZIndex = 0
+				ZIndex = 0,
+				Visible = true,
+				Parent = BackgroundLayer
 			})
 		else
 			BackgroundObject = Create("ImageLabel", {
-				Image = ToAssetId(WindowConfig.BackgroundImage),
-				ImageTransparency = WindowConfig.BackgroundTransparency or 0.35,
+				Image = ToAssetId(InitialBackground.AssetId),
+				ImageTransparency = InitialBackground.Transparency,
 				ScaleType = Enum.ScaleType.Crop,
 				BackgroundTransparency = 1,
 				Size = UDim2.fromScale(1, 1),
-				ZIndex = 0
+				ZIndex = 0,
+				Visible = true,
+				Parent = BackgroundLayer
 			})
 		end
-		BackgroundObject.Parent = MainWindow
+		BackgroundObject.Size = UDim2.fromScale(1, 1)
+		BackgroundObject.Position = UDim2.fromScale(0, 0)
+		BackgroundObject.AnchorPoint = Vector2.new(0, 0)
 		MainWindow.BackgroundTransparency = WindowConfig.BackgroundOverlayTransparency or 0.18
 	end
 
@@ -805,17 +869,23 @@ function OrionLib:MakeWindow(WindowConfig)
 			if Query == "" then
 				return true
 			end
-			for _, Child in ipairs(Object:GetDescendants()) do
-				if Child:IsA("TextLabel") or Child:IsA("TextButton") or Child:IsA("TextBox") then
-					if string.find(string.lower(tostring(Child.Text or "")), Query, 1, true) then
+
+			local function Visit(Node)
+				if not Node or not Node:IsA("GuiObject") then
+					return false
+				end
+				if string.find(GetSearchText(Node), Query, 1, true) then
+					return true
+				end
+				for _, Child in ipairs(Node:GetChildren()) do
+					if Visit(Child) then
 						return true
 					end
 				end
+				return false
 			end
-			if string.find(GetSearchText(Object), Query, 1, true) then
-				return true
-			end
-			return false
+
+			return Visit(Object)
 		end
 
 		local function UpdateSearch()
@@ -973,19 +1043,67 @@ function OrionLib:MakeWindow(WindowConfig)
 		OrionLib:Destroy()
 	end
 
-	function TabFunction:SetBackground(AssetId, IsVideo)
-		if not BackgroundObject then
+	function TabFunction:SetMedia(MediaConfig)
+		if type(MediaConfig) ~= "table" then
+			return self:SetBackground(MediaConfig)
+		end
+		local Resolved = ResolveBackgroundMedia(MediaConfig, MediaConfig.Type or MediaConfig.Kind or MediaConfig.Mode or "image")
+		if not Resolved or not Resolved.AssetId then
 			return false
 		end
-		if IsVideo and BackgroundObject:IsA("VideoFrame") then
-			BackgroundObject.Video = ToAssetId(AssetId)
-			BackgroundObject:Play()
-		elseif not IsVideo and BackgroundObject:IsA("ImageLabel") then
-			BackgroundObject.Image = ToAssetId(AssetId)
+		if not BackgroundLayer then
+			BackgroundLayer = Create("Frame", {
+				BackgroundTransparency = 1,
+				BorderSizePixel = 0,
+				Size = UDim2.fromScale(1, 1),
+				ZIndex = 0,
+				ClipsDescendants = true,
+				Parent = MainWindow
+			})
+		end
+		if BackgroundObject then
+			BackgroundObject:Destroy()
+		end
+		if Resolved.Type == "video" then
+			BackgroundObject = Create("VideoFrame", {
+				Video = ToAssetId(Resolved.AssetId),
+				Looped = Resolved.Looped,
+				Playing = Resolved.Playing,
+				Volume = Resolved.Volume,
+				BackgroundTransparency = 1,
+				Size = UDim2.fromScale(1, 1),
+				ZIndex = 0,
+				Visible = true,
+				Parent = BackgroundLayer
+			})
 		else
+			BackgroundObject = Create("ImageLabel", {
+				Image = ToAssetId(Resolved.AssetId),
+				ImageTransparency = Resolved.Transparency,
+				ScaleType = Enum.ScaleType.Crop,
+				BackgroundTransparency = 1,
+				Size = UDim2.fromScale(1, 1),
+				ZIndex = 0,
+				Visible = true,
+				Parent = BackgroundLayer
+			})
+		end
+		BackgroundObject.Size = UDim2.fromScale(1, 1)
+		BackgroundObject.Position = UDim2.fromScale(0, 0)
+		BackgroundObject.AnchorPoint = Vector2.new(0, 0)
+		MainWindow.BackgroundTransparency = WindowConfig.BackgroundOverlayTransparency or 0.18
+		return true
+	end
+
+	function TabFunction:SetBackground(AssetId, IsVideo)
+		local BackgroundType = IsVideo == true and "video" or "image"
+		if type(AssetId) == "table" then
+			return self:SetMedia(AssetId)
+		end
+		if not AssetId then
 			return false
 		end
-		return true
+		return self:SetMedia({Type = BackgroundType, AssetId = AssetId, Looped = true, Playing = true})
 	end
 
 	function TabFunction:SetBackgroundVisible(Visible)
@@ -2318,7 +2436,7 @@ function OrionLib:MakeWindow(WindowConfig)
 end   
 
 function OrionLib:Destroy()
-	if not Orion.Parent then
+	if not Orion or not Orion.Parent then
 		return
 	end
 	for Index = #OrionLib.Connections, 1, -1 do
@@ -2328,6 +2446,17 @@ function OrionLib:Destroy()
 		end
 		OrionLib.Connections[Index] = nil
 	end
+
+	for _, Child in ipairs(Orion:GetChildren()) do
+		if Child:IsA("Sound") then
+			Child:Stop()
+			Child:Destroy()
+		elseif Child:IsA("VideoFrame") then
+			Child:Pause()
+			Child:Destroy()
+		end
+	end
+
 	Orion:Destroy()
 end
 
