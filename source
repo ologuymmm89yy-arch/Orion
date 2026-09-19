@@ -2,7 +2,8 @@
 
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
-local LocalPlayer = game:GetService("Players").LocalPlayer
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer or Players.PlayerAdded:Wait()
 local HttpService = game:GetService("HttpService")
 local IsMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
 
@@ -17,7 +18,13 @@ local function GetGuiParent()
 			return HiddenUi
 		end
 	end
-	return game:GetService("CoreGui")
+
+	local Success, CoreGui = pcall(game.GetService, game, "CoreGui")
+	if Success and CoreGui then
+		return CoreGui
+	end
+
+	return LocalPlayer:WaitForChild("PlayerGui")
 end
 
 local function HasFileSystem()
@@ -26,6 +33,13 @@ local function HasFileSystem()
 		and type(writefile) == "function"
 		and type(isfolder) == "function"
 		and type(makefolder) == "function"
+end
+
+local function ToAssetId(Value)
+	if type(Value) == "number" then
+		return "rbxassetid://" .. tostring(Value)
+	end
+	return Value
 end
 
 local OrionLib = {
@@ -70,10 +84,13 @@ Orion.IgnoreGuiInset = true
 Orion.ResetOnSpawn = false
 Orion.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 local GuiParent = GetGuiParent()
-if type(syn) == "table" and type(syn.protect_gui) == "function" then
-	pcall(syn.protect_gui, Orion)
+local ParentSuccess = pcall(function()
+	Orion.Parent = GuiParent
+end)
+if not ParentSuccess then
+	GuiParent = LocalPlayer:WaitForChild("PlayerGui")
+	Orion.Parent = GuiParent
 end
-Orion.Parent = GuiParent
 
 for _, Interface in ipairs(GuiParent:GetChildren()) do
 	if Interface.Name == Orion.Name and Interface ~= Orion then
@@ -693,6 +710,44 @@ function OrionLib:MakeWindow(WindowConfig)
 		WindowStuff
 	}), "Main")
 
+	local BackgroundObject
+	local BackgroundEnabled = WindowConfig.BackgroundImage or WindowConfig.BackgroundVideo
+	if BackgroundEnabled then
+		if WindowConfig.BackgroundVideo then
+			BackgroundObject = Create("VideoFrame", {
+				Video = ToAssetId(WindowConfig.BackgroundVideo),
+				Looped = WindowConfig.BackgroundLooped ~= false,
+				Playing = WindowConfig.BackgroundPlaying ~= false,
+				Volume = 0,
+				BackgroundTransparency = 1,
+				Size = UDim2.fromScale(1, 1),
+				ZIndex = 0
+			})
+		else
+			BackgroundObject = Create("ImageLabel", {
+				Image = ToAssetId(WindowConfig.BackgroundImage),
+				ImageTransparency = WindowConfig.BackgroundTransparency or 0.35,
+				ScaleType = Enum.ScaleType.Crop,
+				BackgroundTransparency = 1,
+				Size = UDim2.fromScale(1, 1),
+				ZIndex = 0
+			})
+		end
+		BackgroundObject.Parent = MainWindow
+		MainWindow.BackgroundTransparency = WindowConfig.BackgroundOverlayTransparency or 0.18
+	end
+
+	local Music = Create("Sound", {
+		Name = "OrionMusic",
+		Volume = WindowConfig.MusicVolume or 0.35,
+		Looped = WindowConfig.MusicLooped ~= false,
+	})
+	Music.Parent = Orion
+	if WindowConfig.MusicId then
+		Music.SoundId = ToAssetId(WindowConfig.MusicId)
+		Music:Play()
+	end
+
 	if WindowConfig.ShowIcon then
 		WindowName.Position = UDim2.new(0, 50, 0, -24)
 		local WindowIcon = SetProps(MakeElement("Image", WindowConfig.Icon), {
@@ -701,6 +756,109 @@ function OrionLib:MakeWindow(WindowConfig)
 		})
 		WindowIcon.Parent = MainWindow.TopBar
 	end	
+
+	local SearchEnabled = WindowConfig.SearchEnabled ~= false
+	local SearchTextBox
+	if SearchEnabled then
+		local SearchFrame = AddThemeObject(SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(255, 255, 255), 0, 8), {
+			Parent = MainWindow,
+			Position = UDim2.new(0, IsMobile and 112 or 150 + 12, 0, 58),
+			Size = UDim2.new(1, -(IsMobile and 112 or 150 + 24), 0, 32)
+		}), {
+			AddThemeObject(MakeElement("Stroke"), "Stroke"),
+			SetProps(MakeElement("TextBox"), {
+				BackgroundTransparency = 1,
+				BorderSizePixel = 0,
+				PlaceholderText = WindowConfig.SearchPlaceholder or "Search...",
+				PlaceholderColor3 = Color3.fromRGB(170, 170, 170),
+				TextColor3 = Color3.fromRGB(240, 240, 240),
+				TextSize = 13,
+				Font = Enum.Font.Gotham,
+				TextXAlignment = Enum.TextXAlignment.Left,
+				TextYAlignment = Enum.TextYAlignment.Center,
+				ClearTextOnFocus = false,
+				Position = UDim2.new(0, 12, 0, 0),
+				Size = UDim2.new(1, -24, 1, 0),
+				Text = ""
+			})
+		}), "Second")
+		SearchTextBox = SearchFrame:FindFirstChildOfClass("TextBox")
+
+		local function GetSearchText(Object)
+			if not Object then
+				return ""
+			end
+			local Text = ""
+			if Object:IsA("TextLabel") or Object:IsA("TextButton") or Object:IsA("TextBox") then
+				Text = tostring(Object.Text or "")
+			end
+			if Object:IsA("GuiObject") then
+				Text = Text .. " " .. tostring(Object.Name or "")
+			end
+			return string.lower(Text)
+		end
+
+		local function DoesObjectMatch(Object, Query)
+			if not Object or (not Object:IsA("GuiObject")) then
+				return false
+			end
+			if Query == "" then
+				return true
+			end
+			for _, Child in ipairs(Object:GetDescendants()) do
+				if Child:IsA("TextLabel") or Child:IsA("TextButton") or Child:IsA("TextBox") then
+					if string.find(string.lower(tostring(Child.Text or "")), Query, 1, true) then
+						return true
+					end
+				end
+			end
+			if string.find(GetSearchText(Object), Query, 1, true) then
+				return true
+			end
+			return false
+		end
+
+		local function UpdateSearch()
+			local Query = string.lower(SearchTextBox.Text or "")
+			for _, ItemContainer in ipairs(MainWindow:GetChildren()) do
+				if ItemContainer.Name ~= "ItemContainer" then
+					continue
+				end
+				if Query == "" then
+					ItemContainer.Visible = ItemContainer:IsDescendantOf(MainWindow)
+					for _, Child in ipairs(ItemContainer:GetChildren()) do
+						if Child:IsA("GuiObject") and Child.Name ~= "UIListLayout" and Child.Name ~= "UIPadding" then
+							Child.Visible = true
+						end
+					end
+					continue
+				end
+				local AnyMatch = false
+				for _, Child in ipairs(ItemContainer:GetChildren()) do
+					if Child:IsA("GuiObject") and Child.Name ~= "UIListLayout" and Child.Name ~= "UIPadding" then
+						local SectionMatch = false
+						if Child:FindFirstChild("Holder") then
+							for _, HolderChild in ipairs(Child.Holder:GetChildren()) do
+								if DoesObjectMatch(HolderChild, Query) then
+									SectionMatch = true
+									break
+								end
+							end
+						else
+							SectionMatch = DoesObjectMatch(Child, Query)
+						end
+						Child.Visible = SectionMatch
+						if SectionMatch then
+							AnyMatch = true
+						end
+					end
+				end
+				ItemContainer.Visible = AnyMatch
+			end
+		end
+
+		AddConnection(SearchTextBox:GetPropertyChangedSignal("Text"), UpdateSearch)
+	end
 
 	AddDraggingFunctionality(DragPoint, MainWindow)
 
@@ -811,6 +969,107 @@ function OrionLib:MakeWindow(WindowConfig)
 	end	
 
 	local TabFunction = {}
+	function TabFunction:Destroy()
+		OrionLib:Destroy()
+	end
+
+	function TabFunction:SetBackground(AssetId, IsVideo)
+		if not BackgroundObject then
+			return false
+		end
+		if IsVideo and BackgroundObject:IsA("VideoFrame") then
+			BackgroundObject.Video = ToAssetId(AssetId)
+			BackgroundObject:Play()
+		elseif not IsVideo and BackgroundObject:IsA("ImageLabel") then
+			BackgroundObject.Image = ToAssetId(AssetId)
+		else
+			return false
+		end
+		return true
+	end
+
+	function TabFunction:SetBackgroundVisible(Visible)
+		if BackgroundObject then
+			BackgroundObject.Visible = Visible ~= false
+			return true
+		end
+		return false
+	end
+
+	function TabFunction:SetMusic(AssetId)
+		if not AssetId then
+			Music:Stop()
+			Music.SoundId = ""
+			return false
+		end
+		Music.SoundId = ToAssetId(AssetId)
+		return true
+	end
+
+	function TabFunction:PlayMusic()
+		if Music.SoundId == "" then
+			return false
+		end
+		Music:Play()
+		return true
+	end
+
+	function TabFunction:PauseMusic()
+		Music:Pause()
+	end
+
+	function TabFunction:StopMusic()
+		Music:Stop()
+	end
+
+	function TabFunction:SetMusicVolume(Volume)
+		Music.Volume = math.clamp(tonumber(Volume) or 0, 0, 10)
+	end
+
+	function TabFunction:AddAnimation(Object, Properties, Duration, EasingStyle, EasingDirection)
+		if not Object or not Object:IsA("Instance") or type(Properties) ~= "table" then
+			return nil
+		end
+		local Tween = TweenService:Create(Object, TweenInfo.new(
+			Duration or 0.35,
+			EasingStyle or Enum.EasingStyle.Quint,
+			EasingDirection or Enum.EasingDirection.Out
+		), Properties)
+		Tween:Play()
+		return Tween
+	end
+
+	TabFunction.Search = function(Query)
+		if SearchTextBox then
+			SearchTextBox.Text = Query or ""
+		end
+	end
+
+	TabFunction.Toggle = function()
+		MainWindow.Visible = not MainWindow.Visible
+		if MainWindow.Visible then
+			UIHidden = false
+		else
+			UIHidden = true
+		end
+	end
+
+	TabFunction.Hide = function()
+		MainWindow.Visible = false
+		UIHidden = true
+		if MobileReopen then
+			MobileReopen.Visible = true
+		end
+	end
+
+	TabFunction.Show = function()
+		MainWindow.Visible = true
+		UIHidden = false
+		if MobileReopen then
+			MobileReopen.Visible = false
+		end
+	end
+
 	function TabFunction:MakeTab(TabConfig)
 		TabConfig = TabConfig or {}
 		TabConfig.Name = TabConfig.Name or "Tab"
@@ -1080,6 +1339,69 @@ function OrionLib:MakeWindow(WindowConfig)
 				end
 				return ParagraphFunction
 			end    
+			function ElementFunction:AddMusicPlayer(PlayerConfig)
+				PlayerConfig = PlayerConfig or {}
+				if PlayerConfig.MusicId then
+					Music.SoundId = ToAssetId(PlayerConfig.MusicId)
+				end
+				if PlayerConfig.Volume then
+					Music.Volume = math.clamp(tonumber(PlayerConfig.Volume) or Music.Volume, 0, 10)
+				end
+
+				local PlayerFrame = AddThemeObject(SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(255, 255, 255), 0, 5), {
+					Size = UDim2.new(1, 0, 0, 42),
+					Parent = ItemParent
+				}), {
+					AddThemeObject(SetProps(MakeElement("Label", PlayerConfig.Name or "Music", 14), {
+						Size = UDim2.new(1, -150, 1, 0),
+						Position = UDim2.new(0, 12, 0, 0),
+						Font = Enum.Font.GothamBold,
+						TextTruncate = Enum.TextTruncate.AtEnd,
+						Name = "Title"
+					}), "Text"),
+					AddThemeObject(SetProps(MakeElement("Label", "Ready", 12), {
+						Size = UDim2.new(1, -150, 0, 14),
+						Position = UDim2.new(0, 12, 1, -17),
+						TextTruncate = Enum.TextTruncate.AtEnd,
+						Name = "Status"
+					}), "TextDark"),
+					AddThemeObject(MakeElement("Stroke"), "Stroke")
+				}), "Second")
+
+				local function AddPlayerButton(Text, Position, Callback)
+					local Button = SetProps(MakeElement("Button"), {
+						Size = UDim2.new(0, 38, 0, 26),
+						Position = Position,
+						Parent = PlayerFrame
+					})
+					local ButtonFrame = SetChildren(SetProps(MakeElement("RoundFrame", OrionLib.Themes[OrionLib.SelectedTheme].Main, 0, 4), {
+						Size = UDim2.fromScale(1, 1),
+						Parent = Button
+					}), {
+						AddThemeObject(SetProps(MakeElement("Label", Text, 11), {
+							Size = UDim2.fromScale(1, 1),
+							TextXAlignment = Enum.TextXAlignment.Center
+						}), "Text")
+					})
+					AddConnection(Button.MouseButton1Click, function()
+						Callback()
+						PlayerFrame.Status.Text = Text
+					end)
+					return ButtonFrame
+				end
+
+				AddPlayerButton("Play", UDim2.new(1, -136, 0.5, -13), function()
+					if Music.SoundId ~= "" then Music:Play() end
+				end)
+				AddPlayerButton("Pause", UDim2.new(1, -94, 0.5, -13), function()
+					Music:Pause()
+				end)
+				AddPlayerButton("Stop", UDim2.new(1, -52, 0.5, -13), function()
+					Music:Stop()
+				end)
+
+				return Music
+			end
 			function ElementFunction:AddButton(ButtonConfig)
 				ButtonConfig = ButtonConfig or {}
 				ButtonConfig.Name = ButtonConfig.Name or "Button"
@@ -1996,6 +2318,16 @@ function OrionLib:MakeWindow(WindowConfig)
 end   
 
 function OrionLib:Destroy()
+	if not Orion.Parent then
+		return
+	end
+	for Index = #OrionLib.Connections, 1, -1 do
+		local Connection = OrionLib.Connections[Index]
+		if Connection then
+			Connection:Disconnect()
+		end
+		OrionLib.Connections[Index] = nil
+	end
 	Orion:Destroy()
 end
 

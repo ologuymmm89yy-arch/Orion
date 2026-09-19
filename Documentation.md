@@ -25,8 +25,52 @@ IntroText = <string> - Text to show in the intro animation.
 IntroIcon = <string> - URL to the image you want to use in the intro animation.
 Icon = <string> - URL to the image you want displayed on the window.
 CloseCallback = <function> - Function to execute when the window is closed.
+BackgroundImage = <number|string> - Optional static background asset ID.
+BackgroundVideo = <number|string> - Optional looping video asset ID for an animated background.
+BackgroundTransparency = <number> - Image transparency for a static background.
+MusicId = <number|string> - Optional Roblox audio asset ID to play when the window starts.
+MusicVolume = <number> - Initial music volume from 0 to 10.
+MusicLooped = <bool> - Whether configured music should loop.
 ]]
 ```
+
+### Media and animations
+```lua
+local Window = OrionLib:MakeWindow({
+	Name = "Media UI",
+	BackgroundVideo = 1234567890,
+	MusicId = 9876543210,
+	MusicVolume = 0.25
+})
+
+Window:SetMusic(9876543210)
+Window:PlayMusic()
+Window:SetMusicVolume(0.4)
+Window:PauseMusic()
+Window:StopMusic()
+
+Window:SetBackground(1234567890, true)
+Window:SetBackgroundVisible(false)
+
+Window:AddAnimation(Frame, {BackgroundTransparency = 0.2}, 0.4)
+```
+
+To place a compact player with `Play`, `Pause`, and `Stop` buttons inside a tab:
+```lua
+local Music = Tab:AddMusicPlayer({
+	Name = "Menu soundtrack",
+	MusicId = 9876543210,
+	Volume = 0.25
+})
+```
+
+`BackgroundVideo` requires a Roblox video asset that the current experience can play. Audio and video permissions are controlled by Roblox; restricted assets will not play. Use `BackgroundImage` for a static image.
+
+### Compatibility and cleanup
+
+The library waits for `Players.LocalPlayer` before creating the interface. It tries GUI parents in this order: `gethui` when provided by the environment, `CoreGui`, and finally the player's `PlayerGui`. This keeps the same script usable in supported client environments without requiring executor-specific protection APIs.
+
+Call `Window:Destroy()` when the interface is no longer needed. It immediately disconnects registered input events, stops owning UI updates, and destroys the library GUI.
 
 ### Managing configurations
 ```lua
