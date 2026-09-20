@@ -337,6 +337,14 @@ function OrionLib:UseTheme(Name)
 	return self:SetTheme(Name)
 end
 
+function OrionLib:GetThemeKeys()
+	local Keys = {}
+	for Key in pairs(OrionLib.Themes.Default) do
+		table.insert(Keys, Key)
+	end
+	return Keys
+end
+
 function OrionLib:SetThemeColor(ThemeName, Key, Value)
 	if type(ThemeName) ~= "string" or type(Key) ~= "string" then
 		return false
@@ -2703,7 +2711,39 @@ function OrionLib:MakeWindow(WindowConfig)
 		return ElementFunction   
 	end  
 	
-	return TabFunction
+	local WindowAPI = {
+		Theme = function(_, Name)
+			return OrionLib:Theme(Name)
+		end,
+		UseTheme = function(_, Name)
+			return OrionLib:UseTheme(Name)
+		end,
+		SetThemeColor = function(_, ThemeName, Key, Value)
+			return OrionLib:SetThemeColor(ThemeName, Key, Value)
+		end,
+		Notification = function(_, Config)
+			return OrionLib:MakeNotification(Config)
+		end,
+		Toggle = function(_, Visible)
+			if MainWindow then
+				MainWindow.Visible = Visible ~= false
+			end
+			return MainWindow
+		end,
+		Destroy = function(_)
+			return OrionLib:Destroy()
+		end,
+		Tab = TabFunction,
+		MakeTab = TabFunction,
+		Window = MainWindow,
+		Name = WindowConfig.Name,
+	}
+
+	for Key, Value in pairs(TabFunction) do
+		WindowAPI[Key] = Value
+	end
+
+	return WindowAPI
 end   
 
 function OrionLib:Destroy()
