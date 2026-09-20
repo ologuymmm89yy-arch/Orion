@@ -110,7 +110,9 @@ local OrionLib = {
 	SelectedTheme = "Default",
 	Folder = nil,
 	SaveCfg = false,
-	PerformanceMode = false
+	PerformanceMode = false,
+	NotificationLimit = 4,
+	Notifications = {}
 }
 
 local function MergeThemePalette(BaseTheme, OverrideTheme)
@@ -202,13 +204,19 @@ local function AddConnection(Signal, Function)
 	return SignalConnect
 end
 
-task.spawn(function()
-	while (OrionLib:IsRunning()) do
-		task.wait()
+local function DisconnectAll()
+	for Index = #OrionLib.Connections, 1, -1 do
+		local Connection = OrionLib.Connections[Index]
+		if Connection then
+			Connection:Disconnect()
+		end
+		OrionLib.Connections[Index] = nil
 	end
+end
 
-	for _, Connection in next, OrionLib.Connections do
-		Connection:Disconnect()
+Orion.AncestryChanged:Connect(function(_, Parent)
+	if not Parent then
+		DisconnectAll()
 	end
 end)
 
@@ -767,6 +775,13 @@ function OrionLib:MakeNotification(NotificationConfig)
 		NotificationConfig.Time = NotificationConfig.Time or 4
 		NotificationConfig.Style = NotificationConfig.Style or "glass"
 
+		while #OrionLib.Notifications >= OrionLib.NotificationLimit do
+			local Oldest = table.remove(OrionLib.Notifications, 1)
+			if Oldest and Oldest.Parent then
+				Oldest:Destroy()
+			end
+		end
+
 		local NotificationParent = SetProps(MakeElement("TFrame"), {
 			Size = UDim2.new(1, 0, 0, 0),
 			AutomaticSize = Enum.AutomaticSize.Y,
@@ -810,10 +825,13 @@ function OrionLib:MakeNotification(NotificationConfig)
 
 		OrionLib:ApplyGlass(NotificationFrame, Color3.fromRGB(33, 37, 46), 0.18, 1.8)
 		OrionLib:ApplyShadow(NotificationFrame, Color3.fromRGB(0, 0, 0), 0.72, 18)
+		table.insert(OrionLib.Notifications, NotificationFrame)
 
 		if OrionLib.PerformanceMode then
 			task.wait(NotificationConfig.Time)
-			NotificationFrame:Destroy()
+			if NotificationFrame.Parent then
+				NotificationFrame:Destroy()
+			end
 			return
 		end
 
@@ -826,16 +844,24 @@ function OrionLib:MakeNotification(NotificationConfig)
 		}):Play()
 
 		task.wait(math.max(NotificationConfig.Time - 0.9, 0))
+		if not NotificationFrame.Parent then
+			return
+		end
 		TweenService:Create(NotificationFrame.Icon, TweenInfo.new(0.35, Enum.EasingStyle.Quad), {ImageTransparency = 1}):Play()
 		TweenService:Create(NotificationFrame.Title, TweenInfo.new(0.45, Enum.EasingStyle.Quad), {TextTransparency = 0.2}):Play()
 		TweenService:Create(NotificationFrame.Content, TweenInfo.new(0.45, Enum.EasingStyle.Quad), {TextTransparency = 0.35}):Play()
 		task.wait(0.18)
+		if not NotificationFrame.Parent then
+			return
+		end
 		TweenService:Create(NotificationFrame, TweenInfo.new(0.75, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {
 			Position = UDim2.new(1, 18, 0, 0),
 			BackgroundTransparency = 0.42
 		}):Play()
 		task.wait(0.9)
-		NotificationFrame:Destroy()
+		if NotificationFrame.Parent then
+			NotificationFrame:Destroy()
+		end
 	end)
 end    
 
@@ -1257,7 +1283,21 @@ function OrionLib:MakeWindow(WindowConfig)
 			end
 		end
 
-		AddConnection(SearchTextBox:GetPropertyChangedSignal("Text"), UpdateSearch)
+		local SearchUpdatePending = false
+		local function ScheduleSearchUpdate()
+			if SearchUpdatePending then
+				return
+			end
+			SearchUpdatePending = true
+			task.defer(function()
+				SearchUpdatePending = false
+				if SearchTextBox.Parent then
+					UpdateSearch()
+				end
+			end)
+		end
+
+		AddConnection(SearchTextBox:GetPropertyChangedSignal("Text"), ScheduleSearchUpdate)
 	end
 
 	AddDraggingFunctionality(DragPoint, MainWindow)
@@ -2762,13 +2802,7 @@ function OrionLib:Destroy()
 	if not Orion or not Orion.Parent then
 		return
 	end
-	for Index = #OrionLib.Connections, 1, -1 do
-		local Connection = OrionLib.Connections[Index]
-		if Connection then
-			Connection:Disconnect()
-		end
-		OrionLib.Connections[Index] = nil
-	end
+	DisconnectAll()
 
 	for _, Child in ipairs(Orion:GetChildren()) do
 		if Child:IsA("Sound") then
@@ -2779,6 +2813,7 @@ function OrionLib:Destroy()
 			Child:Destroy()
 		end
 	end
+	OrionLib.Notifications = {}
 
 	Orion:Destroy()
 end
