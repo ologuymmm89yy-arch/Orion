@@ -240,7 +240,11 @@ local function MakeElement(ElementName, ...)
 	local Factory = OrionLib.Elements[ElementName]
 	if not Factory then
 		warn(("Orion Library - Tried to create unregistered element '%s'."):format(tostring(ElementName)))
-		return Create(ElementName, {})
+		return Create("Frame", {
+			Name = tostring(ElementName),
+			BackgroundTransparency = 1,
+			BorderSizePixel = 0
+		})
 	end
 	return Factory(...)
 end
@@ -458,17 +462,6 @@ function OrionLib:ApplyGlass(Object, Color, Transparency, Strength)
 	Stroke.Color = Color3.fromRGB(255, 255, 255)
 	Stroke.Transparency = 0.45
 
-	local Blur = Object:FindFirstChild("OrionGlassBlur")
-	if not Blur then
-		Blur = Create("UIBlur", {
-			Name = "OrionGlassBlur",
-			Size = Strength or 1.5,
-			Parent = Object
-		})
-	else
-		Blur.Size = Strength or 1.5
-	end
-
 	return Object
 end
 
@@ -652,9 +645,6 @@ CreateElement("GlassPanel", function(Color, Transparency, CornerRadius, BlurStre
 			Transparency = 0.45,
 			Thickness = 1
 		}),
-		Create("UIBlur", {
-			Size = BlurStrength or 1.5
-		})
 	})
 	return Panel
 end)
