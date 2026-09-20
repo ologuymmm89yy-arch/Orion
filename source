@@ -42,6 +42,24 @@ local function ToAssetId(Value)
 	return Value
 end
 
+local function FetchText(Url)
+	local Success, Response = pcall(function()
+		return HttpService:GetAsync(Url)
+	end)
+	if Success and type(Response) == "string" then
+		return Response
+	end
+
+	Success, Response = pcall(function()
+		return game:HttpGetAsync(Url)
+	end)
+	if Success and type(Response) == "string" then
+		return Response
+	end
+
+	return nil
+end
+
 local OrionLib = {
 	Elements = {},
 	ThemeObjects = {},
@@ -120,7 +138,11 @@ local function LoadIcons()
 
 	for _, Url in ipairs(Candidates) do
 		local Success, Response = pcall(function()
-			return HttpService:JSONDecode(game:HttpGetAsync(Url))
+			local Body = FetchText(Url)
+			if not Body then
+				return nil
+			end
+			return HttpService:JSONDecode(Body)
 		end)
 		if Success and type(Response) == "table" then
 			if Response.icons and type(Response.icons) == "table" then
