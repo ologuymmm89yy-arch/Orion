@@ -112,7 +112,9 @@ local OrionLib = {
 	SaveCfg = false,
 	PerformanceMode = false,
 	NotificationLimit = 4,
-	Notifications = {}
+	Notifications = {},
+	Languages = {},
+	CurrentLanguage = "en"
 }
 
 local function MergeThemePalette(BaseTheme, OverrideTheme)
@@ -126,6 +128,102 @@ local function MergeThemePalette(BaseTheme, OverrideTheme)
 		end
 	end
 	return Merged
+end
+
+OrionLib.Languages = {
+	en = {
+		Search = "Search...",
+		Notification = "Notification",
+		Open = "Open Orion",
+		Hidden = "Interface Hidden",
+		Reopen = "Tap RightShift to reopen the interface",
+		Configuration = "Configuration",
+		ConfigLoaded = "Auto-loaded configuration for the game %s.",
+		Ready = "Ready",
+		Selected = "Selected",
+		Value = "value"
+	},
+	ru = {
+		Search = "Поиск...",
+		Notification = "Уведомление",
+		Open = "Открыть Orion",
+		Hidden = "Интерфейс скрыт",
+		Reopen = "Нажмите RightShift, чтобы открыть интерфейс",
+		Configuration = "Конфигурация",
+		ConfigLoaded = "Конфигурация игры %s загружена.",
+		Ready = "Готово",
+		Selected = "Выбрано",
+		Value = "значение"
+	},
+	uk = {
+		Search = "Пошук...",
+		Notification = "Сповіщення",
+		Open = "Відкрити Orion",
+		Hidden = "Інтерфейс приховано",
+		Reopen = "Натисніть RightShift, щоб відкрити інтерфейс",
+		Configuration = "Конфігурація",
+		ConfigLoaded = "Конфігурацію гри %s завантажено.",
+		Ready = "Готово",
+		Selected = "Вибрано",
+		Value = "значення"
+	},
+	pl = {
+		Search = "Szukaj...",
+		Notification = "Powiadomienie",
+		Open = "Otworz Orion",
+		Hidden = "Interfejs ukryty",
+		Reopen = "Nacisnij RightShift, aby otworzyc interfejs",
+		Configuration = "Konfiguracja",
+		ConfigLoaded = "Konfiguracja gry %s zostala zaladowana.",
+		Ready = "Gotowe",
+		Selected = "Wybrano",
+		Value = "wartosc"
+	},
+	es = {
+		Search = "Buscar...",
+		Notification = "Notificacion",
+		Open = "Abrir Orion",
+		Hidden = "Interfaz oculta",
+		Reopen = "Pulsa RightShift para abrir la interfaz",
+		Configuration = "Configuracion",
+		ConfigLoaded = "La configuracion del juego %s se cargo.",
+		Ready = "Listo",
+		Selected = "Seleccionado",
+		Value = "valor"
+	},
+	de = {
+		Search = "Suchen...",
+		Notification = "Benachrichtigung",
+		Open = "Orion offnen",
+		Hidden = "Oberflache ausgeblendet",
+		Reopen = "RightShift drucken, um die Oberflache zu offnen",
+		Configuration = "Konfiguration",
+		ConfigLoaded = "Konfiguration fur Spiel %s wurde geladen.",
+		Ready = "Bereit",
+		Selected = "Ausgewahlt",
+		Value = "Wert"
+	}
+}
+
+function OrionLib:RegisterLanguage(Code, Dictionary)
+	if type(Code) ~= "string" or type(Dictionary) ~= "table" then
+		return false
+	end
+	OrionLib.Languages[Code] = Dictionary
+	return true
+end
+
+function OrionLib:SetLanguage(Code)
+	if type(Code) ~= "string" or not OrionLib.Languages[Code] then
+		return false
+	end
+	OrionLib.CurrentLanguage = Code
+	return true
+end
+
+function OrionLib:Translate(Key, Fallback)
+	local Dictionary = OrionLib.Languages[OrionLib.CurrentLanguage] or OrionLib.Languages.en
+	return Dictionary[Key] or OrionLib.Languages.en[Key] or Fallback or Key
 end
 
 --Feather Icons https://github.com/evoincorp/lucideblox/tree/master/src/modules/util - Created by 7kayoh
@@ -769,7 +867,7 @@ local NotificationHolder = SetProps(SetChildren(MakeElement("TFrame"), {
 function OrionLib:MakeNotification(NotificationConfig)
 	NotificationConfig = NotificationConfig or {}
 	task.spawn(function()
-		NotificationConfig.Name = NotificationConfig.Name or "Notification"
+		NotificationConfig.Name = NotificationConfig.Name or OrionLib:Translate("Notification", "Notification")
 		NotificationConfig.Content = NotificationConfig.Content or "Test"
 		NotificationConfig.Image = NotificationConfig.Image or "rbxassetid://4384403532"
 		NotificationConfig.Time = NotificationConfig.Time or 4
@@ -871,8 +969,8 @@ function OrionLib:Init()
 			if isfile(OrionLib.Folder .. "/" .. game.GameId .. ".txt") then
 				LoadCfg(readfile(OrionLib.Folder .. "/" .. game.GameId .. ".txt"))
 				OrionLib:MakeNotification({
-					Name = "Configuration",
-					Content = "Auto-loaded configuration for the game " .. game.GameId .. ".",
+					Name = OrionLib:Translate("Configuration", "Configuration"),
+					Content = string.format(OrionLib:Translate("ConfigLoaded", "Auto-loaded configuration for the game %s."), game.GameId),
 					Time = 5
 				})
 			end
@@ -897,6 +995,7 @@ function OrionLib:MakeWindow(WindowConfig)
 		WindowConfig.IntroEnabled = not WindowConfig.PerformanceMode
 	end
 	WindowConfig.IntroText = WindowConfig.IntroText or "Orion Library"
+	WindowConfig.Language = WindowConfig.Language or OrionLib.CurrentLanguage
 	WindowConfig.CloseCallback = WindowConfig.CloseCallback or function() end
 	WindowConfig.ShowIcon = WindowConfig.ShowIcon or false
 	WindowConfig.Icon = WindowConfig.Icon or "rbxassetid://8834748103"
@@ -904,6 +1003,7 @@ function OrionLib:MakeWindow(WindowConfig)
 	OrionLib.Folder = WindowConfig.ConfigFolder
 	OrionLib.SaveCfg = WindowConfig.SaveConfig
 	OrionLib.PerformanceMode = WindowConfig.PerformanceMode
+	OrionLib:SetLanguage(WindowConfig.Language)
 	if type(WindowConfig.Theme) == "table" then
 		OrionLib:RegisterTheme("Window", WindowConfig.Theme)
 		OrionLib:SetTheme("Window")
@@ -1189,7 +1289,7 @@ function OrionLib:MakeWindow(WindowConfig)
 			SetProps(MakeElement("TextBox"), {
 				BackgroundTransparency = 1,
 				BorderSizePixel = 0,
-				PlaceholderText = WindowConfig.SearchPlaceholder or "Search...",
+				PlaceholderText = WindowConfig.SearchPlaceholder or OrionLib:Translate("Search", "Search..."),
 				PlaceholderColor3 = Color3.fromRGB(170, 170, 170),
 				TextColor3 = Color3.fromRGB(240, 240, 240),
 				TextSize = 13,
@@ -1313,7 +1413,7 @@ function OrionLib:MakeWindow(WindowConfig)
 			Visible = false,
 			ZIndex = 20
 		}), {
-			AddThemeObject(SetProps(MakeElement("Label", "Open Orion", 13), {
+				AddThemeObject(SetProps(MakeElement("Label", OrionLib:Translate("Open", "Open Orion"), 13), {
 				Size = UDim2.new(1, 0, 1, 0),
 				TextXAlignment = Enum.TextXAlignment.Center,
 				ZIndex = 21
@@ -1335,8 +1435,8 @@ function OrionLib:MakeWindow(WindowConfig)
 			MobileReopen.Visible = true
 		end
 		OrionLib:MakeNotification({
-			Name = "Interface Hidden",
-			Content = "Tap RightShift to reopen the interface",
+			Name = OrionLib:Translate("Hidden", "Interface Hidden"),
+			Content = OrionLib:Translate("Reopen", "Tap RightShift to reopen the interface"),
 			Time = 5
 		})
 		WindowConfig.CloseCallback()
@@ -1847,7 +1947,7 @@ function OrionLib:MakeWindow(WindowConfig)
 						TextTruncate = Enum.TextTruncate.AtEnd,
 						Name = "Title"
 					}), "Text"),
-					AddThemeObject(SetProps(MakeElement("Label", "Ready", 12), {
+					AddThemeObject(SetProps(MakeElement("Label", OrionLib:Translate("Ready", "Ready"), 12), {
 						Size = UDim2.new(1, -150, 0, 14),
 						Position = UDim2.new(0, 12, 1, -17),
 						TextTruncate = Enum.TextTruncate.AtEnd,
@@ -2049,7 +2149,7 @@ function OrionLib:MakeWindow(WindowConfig)
 					BackgroundTransparency = 0.3,
 					ClipsDescendants = true
 				}), {
-					AddThemeObject(SetProps(MakeElement("Label", "value", 13), {
+					AddThemeObject(SetProps(MakeElement("Label", OrionLib:Translate("Value", "value"), 13), {
 						Size = UDim2.new(1, -12, 0, 14),
 						Position = UDim2.new(0, 12, 0, 6),
 						Font = Enum.Font.GothamBold,
@@ -2066,7 +2166,7 @@ function OrionLib:MakeWindow(WindowConfig)
 					SetProps(MakeElement("Stroke"), {
 						Color = SliderConfig.Color
 					}),
-					AddThemeObject(SetProps(MakeElement("Label", "value", 13), {
+						AddThemeObject(SetProps(MakeElement("Label", OrionLib:Translate("Value", "value"), 13), {
 						Size = UDim2.new(1, -12, 0, 14),
 						Position = UDim2.new(0, 12, 0, 6),
 						Font = Enum.Font.GothamBold,
@@ -2179,7 +2279,7 @@ function OrionLib:MakeWindow(WindowConfig)
 							ImageColor3 = Color3.fromRGB(240, 240, 240),
 							Name = "Ico"
 						}), "TextDark"),
-						AddThemeObject(SetProps(MakeElement("Label", "Selected", 13), {
+						AddThemeObject(SetProps(MakeElement("Label", OrionLib:Translate("Selected", "Selected"), 13), {
 							Size = UDim2.new(1, -40, 1, 0),
 							Font = Enum.Font.Gotham,
 							Name = "Selected",
@@ -2772,6 +2872,12 @@ function OrionLib:MakeWindow(WindowConfig)
 		end,
 		SetThemeColor = function(_, ThemeName, Key, Value)
 			return OrionLib:SetThemeColor(ThemeName, Key, Value)
+		end,
+		Language = function(_, Code)
+			return OrionLib:SetLanguage(Code)
+		end,
+		Translate = function(_, Key, Fallback)
+			return OrionLib:Translate(Key, Fallback)
 		end,
 		Notification = function(_, Config)
 			return OrionLib:MakeNotification(Config)

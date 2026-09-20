@@ -19,6 +19,7 @@ A modern Luau windowing library with a polished Orion-inspired visual style, res
 - Lightweight window builder with tabs and sections
 - Search box support for larger windows
 - Theme switching with `Theme`, `UseTheme`, and `SetThemeColor`
+- Built-in localization for English, Russian, Ukrainian, Polish, Spanish, and German
 - Notification API for status feedback and prompts
 - Adaptive behavior for desktop and mobile layouts
 
@@ -30,6 +31,7 @@ local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/olog
 local Window = OrionLib:MakeWindow({
     Name = "Orion Modern",
     Theme = "Glass",
+    Language = "ru",
     SaveConfig = false,
 })
 
@@ -41,6 +43,10 @@ Window:Notification({
     Time = 4,
 })
 ```
+
+Available language codes: `en`, `ru`, `uk`, `pl`, `es`, `de`.
+
+You can switch language later with `OrionLib:SetLanguage("uk")` or `Window:Language("pl")`. Custom dictionaries can be registered with `RegisterLanguage`.
 
 ## Theme presets
 
@@ -57,4 +63,12 @@ You can also create custom themes with `RegisterTheme` or `CreateTheme` and over
 This library is in active design polish mode and is intended for Roblox Studio validation and continued refinement. The main source file is the canonical implementation.
 
 > Repo status: synced to the current GitHub `main` branch.
+
+## Validation
+
+The source passes the available static diagnostics. Runtime verification should be performed in Roblox Studio on desktop and mobile.
+<!-- End of README -->
+<!-- -->
+
+End of document.
 
