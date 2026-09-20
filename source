@@ -49,12 +49,44 @@ local OrionLib = {
 	Flags = {},
 	Themes = {
 		Default = {
-			Main = Color3.fromRGB(25, 25, 25),
-			Second = Color3.fromRGB(32, 32, 32),
-			Stroke = Color3.fromRGB(60, 60, 60),
-			Divider = Color3.fromRGB(60, 60, 60),
-			Text = Color3.fromRGB(240, 240, 240),
-			TextDark = Color3.fromRGB(150, 150, 150)
+			Main = Color3.fromRGB(22, 24, 31),
+			Second = Color3.fromRGB(31, 36, 46),
+			Stroke = Color3.fromRGB(95, 105, 130),
+			Divider = Color3.fromRGB(88, 98, 118),
+			Text = Color3.fromRGB(245, 247, 250),
+			TextDark = Color3.fromRGB(176, 184, 198)
+		},
+		Soft = {
+			Main = Color3.fromRGB(242, 245, 249),
+			Second = Color3.fromRGB(255, 255, 255),
+			Stroke = Color3.fromRGB(209, 216, 230),
+			Divider = Color3.fromRGB(206, 214, 226),
+			Text = Color3.fromRGB(29, 38, 53),
+			TextDark = Color3.fromRGB(95, 108, 132)
+		},
+		Glass = {
+			Main = Color3.fromRGB(18, 21, 30),
+			Second = Color3.fromRGB(32, 38, 50),
+			Stroke = Color3.fromRGB(150, 181, 212),
+			Divider = Color3.fromRGB(125, 152, 182),
+			Text = Color3.fromRGB(238, 246, 255),
+			TextDark = Color3.fromRGB(166, 190, 214)
+		},
+		Night = {
+			Main = Color3.fromRGB(10, 12, 18),
+			Second = Color3.fromRGB(17, 20, 28),
+			Stroke = Color3.fromRGB(72, 82, 104),
+			Divider = Color3.fromRGB(72, 82, 104),
+			Text = Color3.fromRGB(232, 237, 240),
+			TextDark = Color3.fromRGB(136, 146, 164)
+		},
+		Aurora = {
+			Main = Color3.fromRGB(20, 29, 44),
+			Second = Color3.fromRGB(31, 41, 57),
+			Stroke = Color3.fromRGB(112, 182, 165),
+			Divider = Color3.fromRGB(126, 164, 214),
+			Text = Color3.fromRGB(228, 246, 250),
+			TextDark = Color3.fromRGB(153, 194, 221)
 		}
 	},
 	SelectedTheme = "Default",
@@ -62,6 +94,19 @@ local OrionLib = {
 	SaveCfg = false,
 	PerformanceMode = false
 }
+
+local function MergeThemePalette(BaseTheme, OverrideTheme)
+	local Merged = {}
+	for Key, Value in pairs(BaseTheme or {}) do
+		Merged[Key] = Value
+	end
+	if type(OverrideTheme) == "table" then
+		for Key, Value in pairs(OverrideTheme) do
+			Merged[Key] = Value
+		end
+	end
+	return Merged
+end
 
 --Feather Icons https://github.com/evoincorp/lucideblox/tree/master/src/modules/util - Created by 7kayoh
 local Icons = {}
@@ -192,8 +237,12 @@ local function CreateElement(ElementName, ElementFunction)
 end
 
 local function MakeElement(ElementName, ...)
-	local NewElement = OrionLib.Elements[ElementName](...)
-	return NewElement
+	local Factory = OrionLib.Elements[ElementName]
+	if not Factory then
+		warn(("Orion Library - Tried to create unregistered element '%s'."):format(tostring(ElementName)))
+		return Create(ElementName, {})
+	end
+	return Factory(...)
 end
 
 local function SetProps(Element, Props)
@@ -262,8 +311,12 @@ function OrionLib:RegisterTheme(Name, Theme)
 		return false
 	end
 
-	OrionLib.Themes[Name] = Theme
+	OrionLib.Themes[Name] = MergeThemePalette(OrionLib.Themes.Default, Theme)
 	return true
+end
+
+function OrionLib:CreateTheme(Name, Theme)
+	return self:RegisterTheme(Name, Theme)
 end
 
 function OrionLib:SetTheme(Name)
@@ -274,6 +327,157 @@ function OrionLib:SetTheme(Name)
 	OrionLib.SelectedTheme = Name
 	SetTheme()
 	return true
+end
+
+function OrionLib:Theme(Name)
+	return self:SetTheme(Name)
+end
+
+function OrionLib:UseTheme(Name)
+	return self:SetTheme(Name)
+end
+
+function OrionLib:SetThemeColor(ThemeName, Key, Value)
+	if type(ThemeName) ~= "string" or type(Key) ~= "string" then
+		return false
+	end
+
+	if not OrionLib.Themes[ThemeName] then
+		OrionLib.Themes[ThemeName] = MergeThemePalette(OrionLib.Themes.Default, {})
+	end
+
+	if not OrionLib.Themes.Default[Key] then
+		return false
+	end
+
+	OrionLib.Themes[ThemeName][Key] = Value
+	if OrionLib.SelectedTheme == ThemeName then
+		SetTheme()
+	end
+	return true
+end
+
+function OrionLib:GetTheme(Name)
+	if type(Name) ~= "string" then
+		return OrionLib.Themes[OrionLib.SelectedTheme]
+	end
+	return OrionLib.Themes[Name] or OrionLib.Themes[OrionLib.SelectedTheme]
+end
+
+function OrionLib:ApplyThemePreset(Name)
+	if type(Name) ~= "string" then
+		return false
+	end
+
+	if not OrionLib.Themes[Name] then
+		return false
+	end
+
+	return self:SetTheme(Name)
+end
+
+function OrionLib:ApplyGradient(Object, ColorA, ColorB, Rotation)
+	if not Object or not Object:IsA("GuiObject") then
+		return Object
+	end
+
+	local Gradient = Object:FindFirstChildOfClass("UIGradient")
+	if not Gradient then
+		Gradient = Create("UIGradient", {
+			Rotation = Rotation or 90,
+			Color = ColorSequence.new({
+				ColorSequenceKeypoint.new(0, ColorA or Color3.fromRGB(255, 255, 255)),
+				ColorSequenceKeypoint.new(1, ColorB or ColorA or Color3.fromRGB(255, 255, 255))
+			})
+		})
+		Gradient.Parent = Object
+	else
+		Gradient.Rotation = Rotation or Gradient.Rotation or 90
+		Gradient.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, ColorA or Color3.fromRGB(255, 255, 255)),
+			ColorSequenceKeypoint.new(1, ColorB or ColorA or Color3.fromRGB(255, 255, 255))
+		})
+	end
+
+	return Object
+end
+
+function OrionLib:ApplyShadow(Object, Color, Transparency, Size)
+	if not Object or not Object:IsA("GuiObject") then
+		return Object
+	end
+
+	local Shadow = Object:FindFirstChild("OrionShadow")
+	if not Shadow then
+		Shadow = Create("ImageLabel", {
+			Name = "OrionShadow",
+			Image = "rbxassetid://1316045217",
+			ScaleType = Enum.ScaleType.Slice,
+			SliceCenter = Rect.new(10, 10, 118, 118),
+			BackgroundTransparency = 1,
+			ImageColor3 = Color or Color3.fromRGB(0, 0, 0),
+			ImageTransparency = Transparency or 0.78,
+			BorderSizePixel = 0,
+			ZIndex = -1,
+			Size = UDim2.new(1, (Size or 18), 1, (Size or 18)),
+			Position = UDim2.new(0, -(Size or 18)/2, 0, -(Size or 18)/2),
+			Parent = Object
+		})
+	else
+		Shadow.ImageColor3 = Color or Shadow.ImageColor3 or Color3.fromRGB(0, 0, 0)
+		Shadow.ImageTransparency = Transparency or Shadow.ImageTransparency or 0.78
+		Shadow.Size = UDim2.new(1, (Size or 18), 1, (Size or 18))
+		Shadow.Position = UDim2.new(0, -(Size or 18)/2, 0, -(Size or 18)/2)
+	end
+
+	return Object
+end
+
+function OrionLib:ApplyGlass(Object, Color, Transparency, Strength)
+	if not Object or not Object:IsA("GuiObject") then
+		return Object
+	end
+
+	Object.BackgroundColor3 = Color or Color3.fromRGB(255, 255, 255)
+	Object.BackgroundTransparency = Transparency or 0.28
+
+	local Stroke = Object:FindFirstChildOfClass("UIStroke") or Create("UIStroke", {
+		Color = Color3.fromRGB(255, 255, 255),
+		Transparency = 0.45,
+		Thickness = 1,
+		Parent = Object
+	})
+	Stroke.Color = Color3.fromRGB(255, 255, 255)
+	Stroke.Transparency = 0.45
+
+	local Blur = Object:FindFirstChild("OrionGlassBlur")
+	if not Blur then
+		Blur = Create("UIBlur", {
+			Name = "OrionGlassBlur",
+			Size = Strength or 1.5,
+			Parent = Object
+		})
+	else
+		Blur.Size = Strength or 1.5
+	end
+
+	return Object
+end
+
+function OrionLib:Animate(Object, Properties, Duration, EasingStyle, Delay)
+	if not Object or not Object:IsA("GuiObject") then
+		return Object
+	end
+
+	local Tween = TweenService:Create(Object, TweenInfo.new(Duration or 0.3, EasingStyle or Enum.EasingStyle.Quad, Enum.EasingDirection.Out), Properties or {})
+	if Delay and Delay > 0 then
+		task.delay(Delay, function()
+			Tween:Play()
+		end)
+		return Object
+	end
+	Tween:Play()
+	return Object
 end
 
 local function PackColor(Color)
@@ -392,6 +596,61 @@ CreateElement("RoundFrame", function(Color, Scale, Offset)
 	return Frame
 end)
 
+CreateElement("GradientFrame", function(ColorA, ColorB, Rotation, Scale, Offset)
+	local Frame = Create("Frame", {
+		BackgroundColor3 = ColorA or Color3.fromRGB(255, 255, 255),
+		BorderSizePixel = 0
+	}, {
+		Create("UIGradient", {
+			Rotation = Rotation or 90,
+			Color = ColorSequence.new({
+				ColorSequenceKeypoint.new(0, ColorA or Color3.fromRGB(255, 255, 255)),
+				ColorSequenceKeypoint.new(1, ColorB or ColorA or Color3.fromRGB(255, 255, 255))
+			})
+		}),
+		Create("UICorner", {
+			CornerRadius = UDim.new(Scale or 0, Offset or 0)
+		})
+	})
+	return Frame
+end)
+
+CreateElement("DropShadow", function(Color, Transparency, Size)
+	local Shadow = Create("ImageLabel", {
+		Image = "rbxassetid://1316045217",
+		ScaleType = Enum.ScaleType.Slice,
+		SliceCenter = Rect.new(10, 10, 118, 118),
+		BackgroundTransparency = 1,
+		ImageColor3 = Color or Color3.fromRGB(0, 0, 0),
+		ImageTransparency = Transparency or 0.8,
+		BorderSizePixel = 0,
+		Size = UDim2.new(1, Size or 16, 1, Size or 16),
+		Position = UDim2.new(0, -(Size or 16)/2, 0, -(Size or 16)/2)
+	})
+	return Shadow
+end)
+
+CreateElement("GlassPanel", function(Color, Transparency, CornerRadius, BlurStrength)
+	local Panel = Create("Frame", {
+		BackgroundColor3 = Color or Color3.fromRGB(255, 255, 255),
+		BackgroundTransparency = Transparency or 0.28,
+		BorderSizePixel = 0
+	}, {
+		Create("UICorner", {
+			CornerRadius = UDim.new(0, CornerRadius or 12)
+		}),
+		Create("UIStroke", {
+			Color = Color3.fromRGB(255, 255, 255),
+			Transparency = 0.45,
+			Thickness = 1
+		}),
+		Create("UIBlur", {
+			Size = BlurStrength or 1.5
+		})
+	})
+	return Panel
+end)
+
 CreateElement("Button", function()
 	local Button = Create("TextButton", {
 		Text = "",
@@ -400,6 +659,20 @@ CreateElement("Button", function()
 		BorderSizePixel = 0
 	})
 	return Button
+end)
+
+CreateElement("TextBox", function()
+	local TextBox = Create("TextBox", {
+		Text = "",
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		TextSize = 14,
+		Font = Enum.Font.Gotham,
+		ClearTextOnFocus = false,
+		TextColor3 = Color3.fromRGB(240, 240, 240),
+		PlaceholderColor3 = Color3.fromRGB(170, 170, 170)
+	})
+	return TextBox
 end)
 
 CreateElement("ScrollFrame", function(Color, Width)
@@ -471,7 +744,8 @@ function OrionLib:MakeNotification(NotificationConfig)
 		NotificationConfig.Name = NotificationConfig.Name or "Notification"
 		NotificationConfig.Content = NotificationConfig.Content or "Test"
 		NotificationConfig.Image = NotificationConfig.Image or "rbxassetid://4384403532"
-		NotificationConfig.Time = NotificationConfig.Time or 15
+		NotificationConfig.Time = NotificationConfig.Time or 4
+		NotificationConfig.Style = NotificationConfig.Style or "glass"
 
 		local NotificationParent = SetProps(MakeElement("TFrame"), {
 			Size = UDim2.new(1, 0, 0, 0),
@@ -479,36 +753,43 @@ function OrionLib:MakeNotification(NotificationConfig)
 			Parent = NotificationHolder
 		})
 
-		local NotificationFrame = SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(25, 25, 25), 0, 10), {
-			Parent = NotificationParent, 
+		local NotificationFrame = SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(28, 30, 36), 0, 14), {
+			Parent = NotificationParent,
 			Size = UDim2.new(1, 0, 0, 0),
-			Position = UDim2.new(1, -55, 0, 0),
-			BackgroundTransparency = 0,
-			AutomaticSize = Enum.AutomaticSize.Y
+			Position = UDim2.new(1, 20, 0, 0),
+			BackgroundTransparency = 0.12,
+			AutomaticSize = Enum.AutomaticSize.Y,
+			ZIndex = 40
 		}), {
-			MakeElement("Stroke", Color3.fromRGB(93, 93, 93), 1.2),
+			MakeElement("Stroke", Color3.fromRGB(255, 255, 255), 1),
 			MakeElement("Padding", 12, 12, 12, 12),
 			SetProps(MakeElement("Image", NotificationConfig.Image), {
-				Size = UDim2.new(0, 20, 0, 20),
+				Size = UDim2.new(0, 22, 0, 22),
 				ImageColor3 = Color3.fromRGB(240, 240, 240),
-				Name = "Icon"
+				Name = "Icon",
+				Position = UDim2.new(0, 0, 0, 0),
+				BackgroundTransparency = 1
 			}),
 			SetProps(MakeElement("Label", NotificationConfig.Name, 15), {
-				Size = UDim2.new(1, -30, 0, 20),
-				Position = UDim2.new(0, 30, 0, 0),
+				Size = UDim2.new(1, -34, 0, 20),
+				Position = UDim2.new(0, 32, 0, 0),
 				Font = Enum.Font.GothamBold,
 				Name = "Title"
 			}),
-			SetProps(MakeElement("Label", NotificationConfig.Content, 14), {
+			SetProps(MakeElement("Label", NotificationConfig.Content, 13), {
 				Size = UDim2.new(1, 0, 0, 0),
-				Position = UDim2.new(0, 0, 0, 25),
-				Font = Enum.Font.GothamSemibold,
+				Position = UDim2.new(0, 0, 0, 26),
+				Font = Enum.Font.GothamMedium,
 				Name = "Content",
 				AutomaticSize = Enum.AutomaticSize.Y,
-				TextColor3 = Color3.fromRGB(200, 200, 200),
-				TextWrapped = true
+				TextColor3 = Color3.fromRGB(220, 224, 232),
+				TextWrapped = true,
+				TextTransparency = 0
 			})
 		})
+
+		OrionLib:ApplyGlass(NotificationFrame, Color3.fromRGB(33, 37, 46), 0.18, 1.8)
+		OrionLib:ApplyShadow(NotificationFrame, Color3.fromRGB(0, 0, 0), 0.72, 18)
 
 		if OrionLib.PerformanceMode then
 			task.wait(NotificationConfig.Time)
@@ -516,19 +797,24 @@ function OrionLib:MakeNotification(NotificationConfig)
 			return
 		end
 
-		TweenService:Create(NotificationFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quint), {Position = UDim2.new(0, 0, 0, 0)}):Play()
+		TweenService:Create(NotificationFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+			Position = UDim2.new(0, 0, 0, 0)
+		}):Play()
 
-		task.wait(math.max(NotificationConfig.Time - 0.88, 0))
-		TweenService:Create(NotificationFrame.Icon, TweenInfo.new(0.4, Enum.EasingStyle.Quint), {ImageTransparency = 1}):Play()
-		TweenService:Create(NotificationFrame, TweenInfo.new(0.8, Enum.EasingStyle.Quint), {BackgroundTransparency = 0.6}):Play()
-		task.wait(0.3)
-		TweenService:Create(NotificationFrame.UIStroke, TweenInfo.new(0.6, Enum.EasingStyle.Quint), {Transparency = 0.9}):Play()
-		TweenService:Create(NotificationFrame.Title, TweenInfo.new(0.6, Enum.EasingStyle.Quint), {TextTransparency = 0.4}):Play()
-		TweenService:Create(NotificationFrame.Content, TweenInfo.new(0.6, Enum.EasingStyle.Quint), {TextTransparency = 0.5}):Play()
-		task.wait(0.05)
+		TweenService:Create(NotificationFrame, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			BackgroundTransparency = 0.12
+		}):Play()
 
-		NotificationFrame:TweenPosition(UDim2.new(1, 20, 0, 0),'In','Quint',0.8,true)
-		task.wait(1.35)
+		task.wait(math.max(NotificationConfig.Time - 0.9, 0))
+		TweenService:Create(NotificationFrame.Icon, TweenInfo.new(0.35, Enum.EasingStyle.Quad), {ImageTransparency = 1}):Play()
+		TweenService:Create(NotificationFrame.Title, TweenInfo.new(0.45, Enum.EasingStyle.Quad), {TextTransparency = 0.2}):Play()
+		TweenService:Create(NotificationFrame.Content, TweenInfo.new(0.45, Enum.EasingStyle.Quad), {TextTransparency = 0.35}):Play()
+		task.wait(0.18)
+		TweenService:Create(NotificationFrame, TweenInfo.new(0.75, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {
+			Position = UDim2.new(1, 18, 0, 0),
+			BackgroundTransparency = 0.42
+		}):Play()
+		task.wait(0.9)
 		NotificationFrame:Destroy()
 	end)
 end    
@@ -733,6 +1019,30 @@ function OrionLib:MakeWindow(WindowConfig)
 		DragPoint,
 		WindowStuff
 	}), "Main")
+	OrionLib:ApplyGradient(MainWindow, Color3.fromRGB(18, 18, 20), Color3.fromRGB(35, 35, 40), 90)
+	OrionLib:ApplyShadow(MainWindow, Color3.fromRGB(0, 0, 0), 0.7, 16)
+	local GlassOverlay = Create("Frame", {
+		BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+		BackgroundTransparency = 0.9,
+		BorderSizePixel = 0,
+		Size = UDim2.fromScale(1, 1),
+		ZIndex = 2,
+		Parent = MainWindow
+	})
+	Create("UIGradient", {
+		Rotation = 90,
+		Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+			ColorSequenceKeypoint.new(0.2, Color3.fromRGB(255, 255, 255)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255))
+		}),
+		Parent = GlassOverlay
+	})
+	GlassOverlay:FindFirstChildOfClass("UIGradient").Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.6),
+		NumberSequenceKeypoint.new(0.35, 0.8),
+		NumberSequenceKeypoint.new(1, 1)
+	})
 
 	local BackgroundObject
 	local BackgroundLayer
@@ -1481,7 +1791,7 @@ function OrionLib:MakeWindow(WindowConfig)
 						Size = UDim2.new(1, -150, 0, 14),
 						Position = UDim2.new(0, 12, 1, -17),
 						TextTruncate = Enum.TextTruncate.AtEnd,
-						Name = "Status"
+						тоName = "Status"
 					}), "TextDark"),
 					AddThemeObject(MakeElement("Stroke"), "Stroke")
 				}), "Second")
@@ -2389,45 +2699,6 @@ function OrionLib:MakeWindow(WindowConfig)
 
 		for i, v in next, GetElements(Container) do
 			ElementFunction[i] = v 
-		end
-
-		if TabConfig.PremiumOnly then
-			for i, v in next, ElementFunction do
-				ElementFunction[i] = function() end
-			end    
-			Container:FindFirstChild("UIListLayout"):Destroy()
-			Container:FindFirstChild("UIPadding"):Destroy()
-			SetChildren(SetProps(MakeElement("TFrame"), {
-				Size = UDim2.new(1, 0, 1, 0),
-				Parent = Container
-			}), {
-				AddThemeObject(SetProps(MakeElement("Image", "rbxassetid://3610239960"), {
-					Size = UDim2.new(0, 18, 0, 18),
-					Position = UDim2.new(0, 15, 0, 15),
-					ImageTransparency = 0.4
-				}), "Text"),
-				AddThemeObject(SetProps(MakeElement("Label", "Unauthorised Access", 14), {
-					Size = UDim2.new(1, -38, 0, 14),
-					Position = UDim2.new(0, 38, 0, 18),
-					TextTransparency = 0.4
-				}), "Text"),
-				AddThemeObject(SetProps(MakeElement("Image", "rbxassetid://4483345875"), {
-					Size = UDim2.new(0, 56, 0, 56),
-					Position = UDim2.new(0, 84, 0, 110),
-				}), "Text"),
-				AddThemeObject(SetProps(MakeElement("Label", "Premium Features", 14), {
-					Size = UDim2.new(1, -(IsMobile and 150 or 200), 0, 14),
-					Position = UDim2.new(0, IsMobile and 150 or 200, 0, 112),
-					Font = Enum.Font.GothamBold
-				}), "Text"),
-				AddThemeObject(SetProps(MakeElement("Label", "This part of the script is locked to Sirius Premium users. Purchase Premium in the Discord server (sirius.menu/discord)", 12), {
-					Size = UDim2.new(1, -(IsMobile and 150 or 200), 0, 0),
-					Position = UDim2.new(0, IsMobile and 150 or 200, 0, 138),
-					AutomaticSize = Enum.AutomaticSize.Y,
-					TextWrapped = true,
-					TextTransparency = 0.4
-				}), "Text")
-			})
 		end
 		return ElementFunction   
 	end  
