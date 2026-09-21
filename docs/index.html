@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0d1118">
+  <meta name="description" content="Orion UI Library: a mobile-friendly Luau UI toolkit with themes, modules, AFK support, and a lightweight code editor.">
+  <title>Orion UI Library</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="aurora aurora-one"></div>
+  <div class="aurora aurora-two"></div>
+  <header class="topbar">
+    <a class="brand" href="#top" aria-label="Orion home"><span class="brand-mark">O</span><span>Orion</span></a>
+    <nav class="nav-links" aria-label="Primary navigation">
+      <a href="#features">Features</a>
+      <a href="#quickstart">Quick start</a>
+      <a href="#api">API</a>
+      <a href="https://github.com/ologuymmm89yy-arch/Orion" target="_blank" rel="noreferrer">GitHub <span class="external">↗</span></a>
+    </nav>
+    <button class="icon-button" id="themeToggle" type="button" aria-label="Toggle theme">◐</button>
+  </header>
+
+  <main id="top">
+    <section class="hero shell">
+      <div class="hero-copy">
+        <p class="eyebrow"><span class="pulse"></span> Open toolkit for Roblox Luau</p>
+        <h1>Build interfaces that feel <em>alive.</em></h1>
+        <p class="hero-lede">A calm, capable UI layer for creators who want mobile support, expressive themes, runtime modules, and a code editor without a maze of dependencies.</p>
+        <div class="hero-actions">
+          <a class="button button-primary" href="#quickstart">Start building <span>→</span></a>
+          <a class="button button-quiet" href="https://github.com/ologuymmm89yy-arch/Orion" target="_blank" rel="noreferrer">View source ↗</a>
+        </div>
+        <div class="hero-meta"><span>Luau first</span><span>Mobile-aware</span><span>No remote icon dependency</span></div>
+      </div>
+      <div class="window-preview" aria-label="Orion interface preview">
+        <div class="preview-top"><div class="traffic"><i></i><i></i><i></i></div><span>Orion / Glass</span><span class="preview-status">● ready</span></div>
+        <div class="preview-body">
+          <aside class="preview-sidebar"><div class="avatar">O</div><strong>orion</strong><span class="sidebar-line active"></span><span class="sidebar-line"></span><span class="sidebar-line short"></span><div class="sidebar-bottom">⌘</div></aside>
+          <div class="preview-content"><div class="content-heading"><div><small>WORKSPACE</small><h3>Creative tools</h3></div><span class="mini-pill">Glass</span></div><div class="metric-row"><div><small>ACTIVE MODULES</small><b>04</b></div><div><small>LATENCY</small><b>12ms</b></div></div><div class="preview-code"><span class="line-no">01<br>02<br>03<br>04</span><code><span class="kw">local</span> Window = OrionLib:MakeWindow({<br>&nbsp; Name = <span class="str">"Studio"</span>,<br>&nbsp; Theme = <span class="str">"Glass"</span>,<br>})</code></div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section shell" id="features">
+      <div class="section-heading"><p class="eyebrow">Small surface, deep control</p><h2>Everything you need to shape the experience.</h2><p>Designed for repeated use: scan quickly, wire features cleanly, and keep the UI responsive when the project grows.</p></div>
+      <div class="feature-grid">
+        <article class="feature-card feature-wide"><span class="feature-icon">✦</span><div><h3>Soft by default</h3><p>Glass panels, gradients, shadows, and five considered themes give your interface a visual language from the first window.</p></div><div class="swatches"><i></i><i></i><i></i><i></i></div></article>
+        <article class="feature-card"><span class="feature-icon">⌘</span><h3>Luau editor</h3><p>Line numbers, autocomplete, find, replace, callbacks, and read-only mode in a lightweight in-game editor.</p><a href="#api">Explore editor →</a></article>
+        <article class="feature-card"><span class="feature-icon">◌</span><h3>Runtime modules</h3><p>Register optional feature packs with guarded <code>Init</code> and <code>Destroy</code> lifecycles.</p><a href="#api">See module API →</a></article>
+        <article class="feature-card feature-wide"><span class="feature-icon">⌁</span><div><h3>Built for the edges</h3><p>Touch controls, AFK state, cleanup paths, icon fallbacks, and performance guards keep the foundation useful beyond the happy path.</p></div><span class="edge-label">desktop / touch / studio</span></article>
+      </div>
+    </section>
+
+    <section class="section shell split-section" id="quickstart">
+      <div class="section-heading"><p class="eyebrow">Quick start</p><h2>One window. A lot of room to grow.</h2><p>Copy the smallest useful setup, then add only the pieces your project needs.</p><button class="copy-button" data-copy-target="quick-code" type="button">Copy snippet <span>⌘</span></button></div>
+      <div class="code-panel"><div class="code-panel-bar"><span>main.luau</span><span class="code-dot">●</span></div><pre id="quick-code"><code><span class="comment">-- Load the current Orion source</span>
+<span class="kw">local</span> OrionLib = <span class="fn">loadstring</span>(game:<span class="fn">HttpGet</span>(<span class="str">"https://raw.githubusercontent.com/ologuymmm89yy-arch/Orion/main/source"</span>))()
+
+<span class="kw">local</span> Window = OrionLib:<span class="fn">MakeWindow</span>({
+  Name = <span class="str">"My workspace"</span>,
+  Theme = <span class="str">"Glass"</span>,
+  Language = <span class="str">"en"</span>,
+})
+
+<span class="kw">local</span> Tools = Window:<span class="fn">MakeTab</span>({Name = <span class="str">"Tools"</span>})
+Tools:<span class="fn">AddButton</span>({Name = <span class="str">"Run"</span>, Callback = <span class="kw">function</span>()
+  <span class="fn">print</span>(<span class="str">"Ready"</span>)
+<span class="kw">end</span>})</code></pre></div>
+    </section>
+
+    <section class="section shell api-section" id="api">
+      <div class="section-heading"><p class="eyebrow">API shelf</p><h2>Find your next building block.</h2></div>
+      <label class="search-box"><span>⌕</span><input id="apiSearch" type="search" placeholder="Search API, theme, module..." autocomplete="off"></label>
+      <div class="api-grid" id="apiGrid">
+        <button class="api-card" data-search="theme themes colors glass soft night aurora"><span>01</span><strong>Theme system</strong><small>Presets, custom colors, live switching</small></button>
+        <button class="api-card" data-search="code editor find replace autocomplete luau"><span>02</span><strong>Code editor</strong><small>Readable editing tools inside your UI</small></button>
+        <button class="api-card" data-search="module plugin init destroy feature pack"><span>03</span><strong>Module packs</strong><small>Optional features with clean lifecycles</small></button>
+        <button class="api-card" data-search="afk idle input timeout callback"><span>04</span><strong>AFK state</strong><small>Opt-in idle detection and recovery</small></button>
+        <button class="api-card" data-search="icon fallback register asset"><span>05</span><strong>Icon registry</strong><small>Own mappings, no remote icon JSON</small></button>
+        <button class="api-card" data-search="safe call debounce throttle signal utility"><span>06</span><strong>Script utilities</strong><small>Small primitives for ordinary Luau work</small></button>
+      </div>
+      <p class="empty-state" id="emptyState" hidden>No matching building block.</p>
+    </section>
+
+    <section class="compat shell"><div><p class="eyebrow">Know the edges</p><h2>Stable foundations beat mystery magic.</h2><p>Orion targets standard Roblox APIs and compatible client environments. Protected loaders may change line numbers or restrict HTTP, GUI parents, or <code>loadstring</code>. Test in Roblox Studio before shipping.</p></div><div class="compat-chip"><span class="pulse"></span><strong>Runtime status</strong><small>Studio validation recommended</small></div></section>
+  </main>
+
+  <footer class="footer shell"><span>© 2026 Orion UI Library</span><span>Built for people who keep making.</span><a href="https://github.com/ologuymmm89yy-arch/Orion" target="_blank" rel="noreferrer">GitHub ↗</a></footer>
+  <script src="app.js"></script>
+</body>
+</html>
