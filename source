@@ -2012,6 +2012,11 @@ function OrionLib:MakeWindow(WindowConfig)
 					"Color3", "UDim2", "Instance", "TweenInfo", "OrionLib", "MakeWindow", "MakeTab",
 					"AddButton", "AddToggle", "AddSlider", "AddDropdown", "AddTextbox", "MakeNotification"
 				}
+				local AutoComplete = EditorConfig.AutoComplete
+				if AutoComplete == nil then
+					AutoComplete = not OrionLib.PerformanceMode
+				end
+				local CompletionUpdatePending = false
 
 				local function UpdateLineNumbers()
 					local Lines = 1
@@ -2045,7 +2050,7 @@ function OrionLib:MakeWindow(WindowConfig)
 							Child:Destroy()
 						end
 					end
-					if Token == "" or Editor.ReadOnly then
+					if Token == "" or Editor.ReadOnly or not AutoComplete then
 						CompletionFrame.Visible = false
 						return
 					end
@@ -2078,7 +2083,15 @@ function OrionLib:MakeWindow(WindowConfig)
 
 				AddConnection(CodeBox:GetPropertyChangedSignal("Text"), function()
 					UpdateLineNumbers()
-					UpdateCompletions()
+					if not CompletionUpdatePending then
+						CompletionUpdatePending = true
+						task.defer(function()
+							CompletionUpdatePending = false
+							if CodeBox.Parent then
+								UpdateCompletions()
+							end
+						end)
+					end
 					if type(EditorConfig.Callback) == "function" then
 						EditorConfig.Callback(CodeBox.Text)
 					end
@@ -2133,6 +2146,10 @@ function OrionLib:MakeWindow(WindowConfig)
 						Completions = Values
 						UpdateCompletions()
 					end
+				end
+				function Editor:SetAutoComplete(Enabled)
+					AutoComplete = Enabled == true
+					UpdateCompletions()
 				end
 				Editor.Frame = EditorFrame
 				Editor.Input = CodeBox
