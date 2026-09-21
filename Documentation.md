@@ -1,16 +1,37 @@
 # Orion Library
-This documentation is for the stable release of Orion Library.
+
+This documentation describes the current development build of Orion Library.
+
+> **Temporary compatibility notice:** the library is not yet guaranteed to start in every third-party or protected loader. Some environments modify the script, block HTTP requests, restrict GUI parents, or expose incomplete Roblox APIs. Test first in Roblox Studio or a compatible client environment.
+
+## Current limitation
+
+The library is currently being stabilized after a large UI, theme, localization, and performance update. In unsupported loaders it may fail before `MakeWindow` is called. A reported line such as `2`, `5`, or `6` can belong to the loader wrapper rather than the library source, so always copy the full error message and stack trace when reporting a problem.
+
+The most common external causes are:
+
+- blocked `loadstring` or HTTP access;
+- restricted `HttpService` or `game:HttpGetAsync`;
+- unavailable `CoreGui`, `gethui`, or `PlayerGui` access;
+- missing or incompatible Roblox UI APIs;
+- a loader rewriting the source and changing line numbers.
+
+The library does not include executor-specific protection or bypass code. Compatibility is intentionally limited to standard Roblox APIs and environments that expose compatible equivalents.
 
 ## Booting the Library
 ```lua
-local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/jensonhirst/Orion/main/source')))()
+local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/ologuymmm89yy-arch/Orion/main/source"))()
 ```
-
-
 
 ## Creating a Window
 ```lua
-local Window = OrionLib:MakeWindow({Name = "Title of the library", HidePremium = false, SaveConfig = true, ConfigFolder = "OrionTest"})
+local Window = OrionLib:MakeWindow({
+	Name = "Title of the library",
+	HidePremium = false,
+	SaveConfig = true,
+	ConfigFolder = "OrionTest",
+	Language = "ru",
+})
 
 --[[
 Name = <string> - The name of the UI.
@@ -31,6 +52,7 @@ BackgroundTransparency = <number> - Image transparency for a static background.
 MusicId = <number|string> - Optional Roblox audio asset ID to play when the window starts.
 MusicVolume = <number> - Initial music volume from 0 to 10.
 MusicLooped = <bool> - Whether configured music should loop.
+Language = <string> - Built-in language code: en, ru, uk, pl, es, or de.
 ]]
 ```
 

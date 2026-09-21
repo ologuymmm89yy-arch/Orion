@@ -1,5 +1,7 @@
 # Orion UI Library
 
+> **Temporary compatibility notice:** the library is currently under runtime repair. It may fail during startup in some protected loaders or environments with restricted HTTP, GUI, or `loadstring` support. Roblox Studio validation is the reference environment.
+
 A modern Luau windowing library with a polished Orion-inspired visual style, responsive layout behavior, soft glass UI, and a cleaner theming system.
 
 ## Current status
@@ -11,7 +13,7 @@ A modern Luau windowing library with a polished Orion-inspired visual style, res
 - ✅ Glass, gradient, and shadow helpers
 - ✅ Animated notification toasts
 - ✅ Cleaner window-level API wrapper
-- ✅ Ready for runtime testing in Roblox Studio
+- ⚠️ Runtime compatibility with third-party loaders is not guaranteed yet
 
 ## Features
 
@@ -58,17 +60,20 @@ You can switch language later with `OrionLib:SetLanguage("uk")` or `Window:Langu
 
 You can also create custom themes with `RegisterTheme` or `CreateTheme` and override colors per key.
 
-## Notes
+## Compatibility status
 
-This library is in active design polish mode and is intended for Roblox Studio validation and continued refinement. The main source file is the canonical implementation.
+The source is being stabilized for two broad environments:
+
+- standard Roblox Studio / supported client execution;
+- environments that expose compatible GUI and HTTP APIs.
+
+Protected loaders may report errors on different line numbers because they wrap or transform the script before execution. A loader can also block `HttpService`, `game:HttpGetAsync`, `CoreGui`, or `loadstring`. Those restrictions are outside the library and can prevent startup even when the source is valid.
+
+For debugging, capture the complete error text and its stack trace. Do not rely on a line number alone.
 
 > Repo status: synced to the current GitHub `main` branch.
 
 ## Validation
 
 The source passes the available static diagnostics. Runtime verification should be performed in Roblox Studio on desktop and mobile.
-<!-- End of README -->
-<!-- -->
-
-End of document.
 
