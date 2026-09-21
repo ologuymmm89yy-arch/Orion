@@ -31,8 +31,12 @@ local Editor = Tools:AddCodeEditor({
 
 Editor:Set("local Ready = true")
 print(Editor:Get())
+print(#Editor:Find("Ready"))
+Editor:ReplaceAll("Ready", "Loaded")
 Editor:Clear()
 ```
+
+`AddCodeEditor` also supports `Size`, `TextSize`, `Placeholder`, and `Callback`. It is a UI editor only: entered text is never executed by the library.
 
 Feature packs can be registered as normal Luau modules with guarded lifecycle methods:
 
@@ -94,6 +98,9 @@ local Tab = Window:MakeTab({
 Custom asset IDs and image URLs passed directly to `Icon`, `Image`, or notification configuration continue to work when the current environment permits those assets.
 
 ## Booting the Library
+
+The current source is published at the repository URL below. Use the same URL for testing so the loader does not run an outdated copy.
+
 ```lua
 local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/ologuymmm89yy-arch/Orion/main/source"))()
 ```

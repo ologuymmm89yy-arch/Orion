@@ -100,6 +100,17 @@ end, 0.2)
 Debounced("ready")
 ```
 
+The editor is a lightweight in-game Luau surface. It does not execute text, install Studio plugins, or write project files.
+
+## Public API
+
+- `Window:MakeTab(config)` and `Tab:AddSection(config)` for layout
+- `Tab:AddCodeEditor(config)` for editable or read-only Luau text
+- `Window:RegisterModule(name, module)` for optional runtime feature packs
+- `Window:ConfigureAFK(config)` for opt-in inactivity state
+- `Window:RegisterIcon(name, asset)` for custom icon mappings
+- `Window.Utils` for reusable scripting helpers
+
 ## Theme presets
 
 - Default
@@ -125,5 +136,4 @@ For debugging, capture the complete error text and its stack trace. Do not rely 
 
 ## Validation
 
-The source passes the available static diagnostics. Runtime verification should be performed in Roblox Studio on desktop and mobile.
-
+The source passes the available static diagnostics. Runtime verification should be performed in Roblox Studio on desktop and mobile. Third-party loader compatibility remains environment-dependent.
