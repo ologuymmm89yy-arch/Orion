@@ -1,0 +1,13 @@
+[package]
+name = "command_center_core"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+path = "core/main.rs"
+
+[profile.release]
+opt-level = "z"     # Оптимизация по размеру WASM файла
+lto = true
+codegen-units = 1
