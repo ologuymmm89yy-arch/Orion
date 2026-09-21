@@ -45,24 +45,6 @@ local function ToAssetId(Value)
 	return Value
 end
 
-local function FetchText(Url)
-	local Success, Response = pcall(function()
-		return HttpService:GetAsync(Url)
-	end)
-	if Success and type(Response) == "string" then
-		return Response
-	end
-
-	Success, Response = pcall(function()
-		return game:HttpGetAsync(Url)
-	end)
-	if Success and type(Response) == "string" then
-		return Response
-	end
-
-	return nil
-end
-
 local OrionLib = {
 	Elements = {},
 	ThemeObjects = {},
@@ -229,47 +211,28 @@ function OrionLib:Translate(Key, Fallback)
 	return Dictionary[Key] or OrionLib.Languages.en[Key] or Fallback or Key
 end
 
---Feather Icons https://github.com/evoincorp/lucideblox/tree/master/src/modules/util - Created by 7kayoh
-local Icons = {}
+local Icons = {
+	close = "rbxassetid://7072725342",
+	minimize = "rbxassetid://7072719338",
+	chevron = "rbxassetid://7072706796",
+	check = "rbxassetid://3944680095",
+	avatar = "rbxassetid://4031889928",
+	notification = "rbxassetid://4384403532"
+}
 
-local function LoadIcons()
-	local Candidates = {
-		"https://raw.githubusercontent.com/evoincorp/lucideblox/master/src/modules/util/icons.json",
-		"https://raw.githubusercontent.com/7kayoh/lucideblox/master/src/modules/util/icons.json",
-		"https://cdn.jsdelivr.net/gh/evoincorp/lucideblox@master/src/modules/util/icons.json"
-	}
-
-	for _, Url in ipairs(Candidates) do
-		local Success, Response = pcall(function()
-			local Body = FetchText(Url)
-			if not Body then
-				return nil
-			end
-			return HttpService:JSONDecode(Body)
-		end)
-		if Success and type(Response) == "table" then
-			if Response.icons and type(Response.icons) == "table" then
-				return Response.icons
-			end
-			if Response["icons"] and type(Response["icons"]) == "table" then
-				return Response["icons"]
-			end
-		end
+function OrionLib:RegisterIcon(Name, Asset)
+	if type(Name) ~= "string" or (type(Asset) ~= "string" and type(Asset) ~= "number") then
+		return false
 	end
-
-	return {}
-end
-
-Icons = LoadIcons()
-if not next(Icons) then
-	warn("\nOrion Library - Failed to load Feather Icons. Using empty fallback icon set.\n")
+	Icons[Name] = ToAssetId(Asset)
+	return true
 end
 
 local function GetIcon(IconName)
 	if type(IconName) ~= "string" then
 		return nil
 	end
-	return Icons[IconName]
+	return Icons[IconName] or Icons[string.lower(IconName)]
 end   
 
 local Orion = Instance.new("ScreenGui")

@@ -13,6 +13,7 @@ A modern Luau windowing library with a polished Orion-inspired visual style, res
 - ✅ Glass, gradient, and shadow helpers
 - ✅ Animated notification toasts
 - ✅ Cleaner window-level API wrapper
+- ✅ Built-in icon fallbacks without startup HTTP dependency
 - ⚠️ Runtime compatibility with third-party loaders is not guaranteed yet
 
 ## Features
@@ -23,6 +24,7 @@ A modern Luau windowing library with a polished Orion-inspired visual style, res
 - Theme switching with `Theme`, `UseTheme`, and `SetThemeColor`
 - Built-in localization for English, Russian, Ukrainian, Polish, Spanish, and German
 - Notification API for status feedback and prompts
+- Built-in icon mappings with `RegisterIcon` for custom assets
 - Adaptive behavior for desktop and mobile layouts
 
 ## Example usage

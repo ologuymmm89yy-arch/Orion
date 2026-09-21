@@ -18,6 +18,23 @@ The most common external causes are:
 
 The library does not include executor-specific protection or bypass code. Compatibility is intentionally limited to standard Roblox APIs and environments that expose compatible equivalents.
 
+## Icons without remote dependencies
+
+The library no longer downloads an external icon package during startup. Core icons use built-in Roblox asset mappings, so a blocked HTTP request does not prevent the UI from being created.
+
+Register your own icon mapping when needed:
+
+```lua
+OrionLib:RegisterIcon("settings", "rbxassetid://1234567890")
+
+local Tab = Window:MakeTab({
+	Name = "Settings",
+	Icon = "settings",
+})
+```
+
+Custom asset IDs and image URLs passed directly to `Icon`, `Image`, or notification configuration continue to work when the current environment permits those assets.
+
 ## Booting the Library
 ```lua
 local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/ologuymmm89yy-arch/Orion/main/source"))()
