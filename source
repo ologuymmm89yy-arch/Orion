@@ -46,6 +46,7 @@ local function ToAssetId(Value)
 end
 
 local OrionLib = {
+	-- Public registries stay in one table so extensions do not need globals.
 	Elements = {},
 	ThemeObjects = {},
 	Connections = {},
@@ -222,6 +223,7 @@ function OrionLib:Translate(Key, Fallback)
 	return Dictionary[Key] or OrionLib.Languages.en[Key] or Fallback or Key
 end
 
+-- Small, dependency-free helpers for scripts and optional feature packs.
 function OrionLib.Utils.Clamp(Value, Minimum, Maximum)
 	return math.clamp(Value, Minimum, Maximum)
 end
@@ -362,6 +364,7 @@ function OrionLib:GetModule(Name)
 end
 
 local Icons = {
+	-- These assets are local mappings; startup does not depend on remote icon JSON.
 	close = "rbxassetid://7072725342",
 	minimize = "rbxassetid://7072719338",
 	chevron = "rbxassetid://7072706796",
@@ -428,6 +431,7 @@ local function DisconnectAll()
 	end
 end
 
+-- AFK monitoring is opt-in and uses one low-frequency monitor instead of per-input timers.
 local function DisconnectAFK()
 	for Index = #OrionLib.AFK.Connections, 1, -1 do
 		local Connection = OrionLib.AFK.Connections[Index]
@@ -1174,6 +1178,7 @@ function OrionLib:Init()
 end	
 
 function OrionLib:MakeWindow(WindowConfig)
+	-- Normalize options once so the rest of the window builder stays predictable.
 	local FirstTab = true
 	local Minimized = false
 	local UIHidden = false
@@ -1946,6 +1951,7 @@ function OrionLib:MakeWindow(WindowConfig)
 			end
 
 			function ElementFunction:AddCodeEditor(EditorConfig)
+				-- This is a lightweight UI editor, not an evaluator or Studio file writer.
 				EditorConfig = EditorConfig or {}
 				local Editor = {
 					Text = EditorConfig.Text or EditorConfig.Default or "",
@@ -2004,7 +2010,7 @@ function OrionLib:MakeWindow(WindowConfig)
 				AddConnection(CodeBox:GetPropertyChangedSignal("Text"), function()
 					UpdateLineNumbers()
 					if type(EditorConfig.Callback) == "function" then
-						EditorConfig.Callback(CodeBox.Text)
+						OrionLib.Utils.SafeCall(EditorConfig.Callback, CodeBox.Text)
 					end
 				end)
 				UpdateLineNumbers()
@@ -3249,6 +3255,9 @@ function OrionLib:Destroy()
 	DisconnectAFK()
 	OrionLib.AFK.Enabled = false
 	OrionLib.AFK.Active = false
+	for Name in pairs(OrionLib.ActiveModules) do
+		OrionLib:DisableModule(Name)
+	end
 
 	for _, Child in ipairs(Orion:GetChildren()) do
 		if Child:IsA("Sound") then
