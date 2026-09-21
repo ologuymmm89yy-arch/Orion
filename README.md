@@ -26,6 +26,8 @@ A modern Luau windowing library with a polished Orion-inspired visual style, res
 - Notification API for status feedback and prompts
 - Built-in icon mappings with `RegisterIcon` for custom assets
 - Optional AFK detection with timeout, recovery, and callback support
+- Lightweight Luau code editor widget with line numbers
+- Safe optional module registry for feature packs
 - Adaptive behavior for desktop and mobile layouts
 
 ## Example usage
@@ -55,11 +57,34 @@ Window:ConfigureAFK({
         print("AFK state:", IsAFK, Reason)
     end,
 })
+
+local Editor = Window:MakeTab({Name = "Tools"}):AddCodeEditor({
+    Text = "print('Hello from Luau')",
+    Size = UDim2.new(1, 0, 0, 220),
+})
+
+print(Editor:Get())
 ```
 
 Available language codes: `en`, `ru`, `uk`, `pl`, `es`, `de`.
 
 You can switch language later with `OrionLib:SetLanguage("uk")` or `Window:Language("pl")`. Custom dictionaries can be registered with `RegisterLanguage`.
+
+Optional modules can be registered as ordinary Luau tables:
+
+```lua
+Window:RegisterModule("Example", {
+    Init = function(Context)
+        print("Module enabled")
+    end,
+    Destroy = function(Context)
+        print("Module disabled")
+    end,
+})
+Window:EnableModule("Example")
+```
+
+Modules are lifecycle helpers, not file installers. Roblox runtime code cannot write Studio files or install plugins by itself.
 
 ## Theme presets
 

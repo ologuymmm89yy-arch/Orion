@@ -100,6 +100,8 @@ local OrionLib = {
 	Notifications = {},
 	Languages = {},
 	CurrentLanguage = "en",
+	Modules = {},
+	ActiveModules = {},
 	AFK = {
 		Enabled = false,
 		Active = false,
@@ -217,6 +219,55 @@ end
 function OrionLib:Translate(Key, Fallback)
 	local Dictionary = OrionLib.Languages[OrionLib.CurrentLanguage] or OrionLib.Languages.en
 	return Dictionary[Key] or OrionLib.Languages.en[Key] or Fallback or Key
+end
+
+function OrionLib:RegisterModule(Name, Module)
+	if type(Name) ~= "string" or type(Module) ~= "table" then
+		return false
+	end
+	if type(Module.Init) ~= "function" and type(Module.Destroy) ~= "function" then
+		return false
+	end
+	OrionLib.Modules[Name] = Module
+	return true
+end
+
+function OrionLib:EnableModule(Name, Context)
+	local Module = OrionLib.Modules[Name]
+	if not Module then
+		return false
+	end
+	if OrionLib.ActiveModules[Name] then
+		return true
+	end
+	local Success, Result = pcall(function()
+		if type(Module.Init) == "function" then
+			return Module.Init(Context or OrionLib)
+		end
+		return true
+	end)
+	if not Success then
+		warn(("Orion Library - Module '%s' failed to initialize: %s"):format(Name, tostring(Result)))
+		return false
+	end
+	OrionLib.ActiveModules[Name] = true
+	return true
+end
+
+function OrionLib:DisableModule(Name, Context)
+	local Module = OrionLib.Modules[Name]
+	if not Module or not OrionLib.ActiveModules[Name] then
+		return false
+	end
+	if type(Module.Destroy) == "function" then
+		pcall(Module.Destroy, Context or OrionLib)
+	end
+	OrionLib.ActiveModules[Name] = nil
+	return true
+end
+
+function OrionLib:GetModule(Name)
+	return OrionLib.Modules[Name]
 end
 
 local Icons = {
@@ -1803,6 +1854,89 @@ function OrionLib:MakeWindow(WindowConfig)
 				return Object
 			end
 
+			function ElementFunction:AddCodeEditor(EditorConfig)
+				EditorConfig = EditorConfig or {}
+				local Editor = {
+					Text = EditorConfig.Text or EditorConfig.Default or "",
+					ReadOnly = EditorConfig.ReadOnly == true
+				}
+				local EditorFrame = AddThemeObject(SetProps(MakeElement("RoundFrame", Color3.fromRGB(20, 23, 30), 0, 8), {
+					Size = EditorConfig.Size or UDim2.new(1, 0, 0, 220),
+					Parent = ItemParent,
+					ClipsDescendants = true,
+					Name = EditorConfig.Name or "CodeEditor"
+				}), "Second")
+				local LineNumbers = AddThemeObject(SetProps(MakeElement("Label", "1", 12), {
+					Size = UDim2.new(0, 34, 1, -12),
+					Position = UDim2.new(0, 8, 0, 6),
+					TextYAlignment = Enum.TextYAlignment.Top,
+					TextXAlignment = Enum.TextXAlignment.Right,
+					Font = Enum.Font.Code,
+					TextColor3 = Color3.fromRGB(125, 135, 150),
+					TextWrapped = false,
+					Name = "LineNumbers"
+				}), "TextDark")
+				local CodeBox = SetProps(MakeElement("TextBox"), {
+					Size = UDim2.new(1, -54, 1, -12),
+					Position = UDim2.new(0, 50, 0, 6),
+					Text = Editor.Text,
+					Font = Enum.Font.Code,
+					TextSize = EditorConfig.TextSize or 13,
+					TextXAlignment = Enum.TextXAlignment.Left,
+					TextYAlignment = Enum.TextYAlignment.Top,
+					TextWrapped = false,
+					ClearTextOnFocus = false,
+					MultiLine = true,
+					TextEditable = not Editor.ReadOnly,
+					PlaceholderText = EditorConfig.Placeholder or "-- write Luau here",
+					PlaceholderColor3 = Color3.fromRGB(130, 140, 155),
+					BackgroundTransparency = 1,
+					BorderSizePixel = 0,
+					Name = "Code"
+				})
+				CodeBox.Parent = EditorFrame
+				AddThemeObject(MakeElement("Stroke"), "Stroke").Parent = EditorFrame
+
+				local function UpdateLineNumbers()
+					local Lines = 1
+					for _ in string.gmatch(CodeBox.Text, "\n") do
+						Lines += 1
+					end
+					local Labels = {}
+					for Index = 1, Lines do
+						Labels[Index] = tostring(Index)
+					end
+					LineNumbers.Text = table.concat(Labels, "\n")
+					Editor.Text = CodeBox.Text
+				end
+
+				AddConnection(CodeBox:GetPropertyChangedSignal("Text"), function()
+					UpdateLineNumbers()
+					if type(EditorConfig.Callback) == "function" then
+						EditorConfig.Callback(CodeBox.Text)
+					end
+				end)
+				UpdateLineNumbers()
+
+				function Editor:Get()
+					return CodeBox.Text
+				end
+				function Editor:Set(Text)
+					CodeBox.Text = tostring(Text or "")
+					UpdateLineNumbers()
+				end
+				function Editor:Clear()
+					self:Set("")
+				end
+				function Editor:SetReadOnly(ReadOnly)
+					self.ReadOnly = ReadOnly == true
+					CodeBox.TextEditable = not self.ReadOnly
+				end
+				Editor.Frame = EditorFrame
+				Editor.Input = CodeBox
+				return Editor
+			end
+
 			function ElementFunction:AddCircle(CircleConfig)
 				CircleConfig = CircleConfig or {}
 				CircleConfig.Size = CircleConfig.Size or UDim2.new(0, 48, 0, 48)
@@ -2945,6 +3079,18 @@ function OrionLib:MakeWindow(WindowConfig)
 		end,
 		IsAFK = function(_)
 			return OrionLib:IsAFK()
+		end,
+		RegisterModule = function(_, Name, Module)
+			return OrionLib:RegisterModule(Name, Module)
+		end,
+		EnableModule = function(_, Name, Context)
+			return OrionLib:EnableModule(Name, Context)
+		end,
+		DisableModule = function(_, Name, Context)
+			return OrionLib:DisableModule(Name, Context)
+		end,
+		GetModule = function(_, Name)
+			return OrionLib:GetModule(Name)
 		end,
 		Translate = function(_, Key, Fallback)
 			return OrionLib:Translate(Key, Fallback)

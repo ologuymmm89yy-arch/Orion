@@ -18,6 +18,40 @@ The most common external causes are:
 
 The library does not include executor-specific protection or bypass code. Compatibility is intentionally limited to standard Roblox APIs and environments that expose compatible equivalents.
 
+## Code editor and optional modules
+
+The library includes a lightweight in-game Luau editor widget. It is intended for displaying or editing code inside a Roblox UI; it does not execute arbitrary text and does not write Studio files.
+
+```lua
+local Tools = Window:MakeTab({Name = "Tools"})
+local Editor = Tools:AddCodeEditor({
+	Text = "print('Hello from Luau')",
+	ReadOnly = false,
+})
+
+Editor:Set("local Ready = true")
+print(Editor:Get())
+Editor:Clear()
+```
+
+Feature packs can be registered as normal Luau modules with guarded lifecycle methods:
+
+```lua
+Window:RegisterModule("Profiler", {
+	Init = function(Context)
+		print("Profiler enabled")
+	end,
+	Destroy = function(Context)
+		print("Profiler disabled")
+	end,
+})
+
+Window:EnableModule("Profiler")
+Window:DisableModule("Profiler")
+```
+
+These modules are runtime extensions. Installing Studio plugins or writing files requires a separate Roblox Studio Plugin and cannot be performed by a normal in-game UI library.
+
 ## Icons without remote dependencies
 
 The library no longer downloads an external icon package during startup. Core icons use built-in Roblox asset mappings, so a blocked HTTP request does not prevent the UI from being created.
