@@ -100,6 +100,7 @@ local OrionLib = {
 	Notifications = {},
 	Languages = {},
 	CurrentLanguage = "en",
+	Utils = {},
 	Modules = {},
 	ActiveModules = {},
 	AFK = {
@@ -219,6 +220,96 @@ end
 function OrionLib:Translate(Key, Fallback)
 	local Dictionary = OrionLib.Languages[OrionLib.CurrentLanguage] or OrionLib.Languages.en
 	return Dictionary[Key] or OrionLib.Languages.en[Key] or Fallback or Key
+end
+
+function OrionLib.Utils.Clamp(Value, Minimum, Maximum)
+	return math.clamp(Value, Minimum, Maximum)
+end
+
+function OrionLib.Utils.SafeCall(Callback, ...)
+	if type(Callback) ~= "function" then
+		return false, "Callback is not a function"
+	end
+	return pcall(Callback, ...)
+end
+
+function OrionLib.Utils.DeepCopy(Value, Seen)
+	if type(Value) ~= "table" then
+		return Value
+	end
+	Seen = Seen or {}
+	if Seen[Value] then
+		return Seen[Value]
+	end
+
+	local Copy = {}
+	Seen[Value] = Copy
+	for Key, Item in pairs(Value) do
+		Copy[OrionLib.Utils.DeepCopy(Key, Seen)] = OrionLib.Utils.DeepCopy(Item, Seen)
+	end
+	return setmetatable(Copy, getmetatable(Value))
+end
+
+function OrionLib.Utils.Debounce(Callback, Delay)
+	local Running = false
+	return function(...)
+		if Running then
+			return false
+		end
+		Running = true
+		local Arguments = table.pack(...)
+		task.delay(Delay or 0, function()
+			Running = false
+			OrionLib.Utils.SafeCall(Callback, table.unpack(Arguments, 1, Arguments.n))
+		end)
+		return true
+	end
+end
+
+function OrionLib.Utils.Throttle(Callback, Interval)
+	local LastCall = 0
+	return function(...)
+		local Now = os.clock()
+		if Now - LastCall < (Interval or 0) then
+			return false
+		end
+		LastCall = Now
+		OrionLib.Utils.SafeCall(Callback, ...)
+		return true
+	end
+end
+
+function OrionLib.Utils.CreateSignal()
+	local Signal = {Connections = {}}
+
+	function Signal:Connect(Callback)
+		if type(Callback) ~= "function" then
+			return nil
+		end
+		local Connection = {Connected = true}
+		function Connection:Disconnect()
+			self.Connected = false
+		end
+		table.insert(self.Connections, {Connection = Connection, Callback = Callback})
+		return Connection
+	end
+
+	function Signal:Fire(...)
+		for Index = #self.Connections, 1, -1 do
+			local Entry = self.Connections[Index]
+			if not Entry.Connection.Connected then
+				table.remove(self.Connections, Index)
+			else
+				OrionLib.Utils.SafeCall(Entry.Callback, ...)
+			end
+		end
+	end
+
+	function Signal:Destroy()
+		table.clear(self.Connections)
+	end
+
+	return Signal
 end
 
 function OrionLib:RegisterModule(Name, Module)
@@ -1928,6 +2019,35 @@ function OrionLib:MakeWindow(WindowConfig)
 				function Editor:Clear()
 					self:Set("")
 				end
+				function Editor:Find(Query)
+					if type(Query) ~= "string" or Query == "" then
+						return {}
+					end
+					local Matches = {}
+					local SearchStart = 1
+					while true do
+						local MatchStart, MatchEnd = string.find(CodeBox.Text, Query, SearchStart, true)
+						if not MatchStart then
+							break
+						end
+						table.insert(Matches, {Start = MatchStart, End = MatchEnd})
+						SearchStart = MatchEnd + 1
+					end
+					return Matches
+				end
+				function Editor:ReplaceAll(Query, Replacement)
+					if type(Query) ~= "string" or Query == "" then
+						return 0
+					end
+					local Count = 0
+					local EscapedQuery = string.gsub(Query, "([%%%^%$%(%)%.%[%]%*%+%-%?])", "%%%1")
+					local Result = string.gsub(CodeBox.Text, EscapedQuery, function()
+						Count += 1
+						return tostring(Replacement or "")
+					end)
+					self:Set(Result)
+					return Count
+				end
 				function Editor:SetReadOnly(ReadOnly)
 					self.ReadOnly = ReadOnly == true
 					CodeBox.TextEditable = not self.ReadOnly
@@ -3092,6 +3212,7 @@ function OrionLib:MakeWindow(WindowConfig)
 		GetModule = function(_, Name)
 			return OrionLib:GetModule(Name)
 		end,
+		Utils = OrionLib.Utils,
 		Translate = function(_, Key, Fallback)
 			return OrionLib:Translate(Key, Fallback)
 		end,

@@ -28,6 +28,7 @@ A modern Luau windowing library with a polished Orion-inspired visual style, res
 - Optional AFK detection with timeout, recovery, and callback support
 - Lightweight Luau code editor widget with line numbers
 - Safe optional module registry for feature packs
+- General scripting utilities: `SafeCall`, `Debounce`, `Throttle`, `DeepCopy`, and signals
 - Adaptive behavior for desktop and mobile layouts
 
 ## Example usage
@@ -64,6 +65,8 @@ local Editor = Window:MakeTab({Name = "Tools"}):AddCodeEditor({
 })
 
 print(Editor:Get())
+print(#Editor:Find("print"))
+Editor:ReplaceAll("Hello", "Welcome")
 ```
 
 Available language codes: `en`, `ru`, `uk`, `pl`, `es`, `de`.
@@ -85,6 +88,17 @@ Window:EnableModule("Example")
 ```
 
 Modules are lifecycle helpers, not file installers. Roblox runtime code cannot write Studio files or install plugins by itself.
+
+The library also exposes original scripting helpers through `OrionLib.Utils` or `Window.Utils`:
+
+```lua
+local SafeCall = OrionLib.Utils.SafeCall
+local Debounced = OrionLib.Utils.Debounce(function(Value)
+    print(Value)
+end, 0.2)
+
+Debounced("ready")
+```
 
 ## Theme presets
 

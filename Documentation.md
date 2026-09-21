@@ -52,6 +52,30 @@ Window:DisableModule("Profiler")
 
 These modules are runtime extensions. Installing Studio plugins or writing files requires a separate Roblox Studio Plugin and cannot be performed by a normal in-game UI library.
 
+## General scripting utilities
+
+The library provides original helpers for common Luau work. They are available as `OrionLib.Utils` and on the returned window as `Window.Utils`.
+
+```lua
+local Utils = OrionLib.Utils
+
+local Safe, Result = Utils.SafeCall(function(Value)
+	return Value * 2
+end, 21)
+
+local Limited = Utils.Throttle(function()
+	print("called at most once per interval")
+end, 0.25)
+
+local Signal = Utils.CreateSignal()
+local Connection = Signal:Connect(function(Message)
+	print(Message)
+end)
+Signal:Fire("ready")
+Connection:Disconnect()
+Signal:Destroy()
+```
+
 ## Icons without remote dependencies
 
 The library no longer downloads an external icon package during startup. Core icons use built-in Roblox asset mappings, so a blocked HTTP request does not prevent the UI from being created.
