@@ -99,7 +99,15 @@ local OrionLib = {
 	NotificationLimit = 4,
 	Notifications = {},
 	Languages = {},
-	CurrentLanguage = "en"
+	CurrentLanguage = "en",
+	AFK = {
+		Enabled = false,
+		Active = false,
+		Timeout = 300,
+		Generation = 0,
+		Callback = nil,
+		Connections = {}
+	}
 }
 
 local function MergeThemePalette(BaseTheme, OverrideTheme)
@@ -276,6 +284,85 @@ local function DisconnectAll()
 		end
 		OrionLib.Connections[Index] = nil
 	end
+end
+
+local function DisconnectAFK()
+	for Index = #OrionLib.AFK.Connections, 1, -1 do
+		local Connection = OrionLib.AFK.Connections[Index]
+		if Connection then
+			Connection:Disconnect()
+		end
+		OrionLib.AFK.Connections[Index] = nil
+	end
+	OrionLib.AFK.Generation += 1
+end
+
+function OrionLib:SetAFK(IsAFK, Reason)
+	IsAFK = IsAFK == true
+	if OrionLib.AFK.Active == IsAFK then
+		return false
+	end
+
+	OrionLib.AFK.Active = IsAFK
+	if type(OrionLib.AFK.Callback) == "function" then
+		pcall(OrionLib.AFK.Callback, IsAFK, Reason)
+	end
+	return true
+end
+
+function OrionLib:IsAFK()
+	return OrionLib.AFK.Active
+end
+
+function OrionLib:ConfigureAFK(Config)
+	Config = Config or {}
+	if Config.Enabled ~= nil then
+		OrionLib.AFK.Enabled = Config.Enabled == true
+	end
+	if type(Config.Timeout) == "number" then
+		OrionLib.AFK.Timeout = math.max(Config.Timeout, 10)
+	end
+	OrionLib.AFK.Callback = type(Config.Callback) == "function" and Config.Callback or nil
+
+	DisconnectAFK()
+	OrionLib:SetAFK(false, "configured")
+	if not OrionLib.AFK.Enabled then
+		return false
+	end
+
+	local LastActivity = 0
+	local function MarkActivity()
+		local Now = os.clock()
+		if Now - LastActivity < 0.25 then
+			return
+		end
+		LastActivity = Now
+		OrionLib:SetAFK(false, "activity")
+	end
+
+	table.insert(OrionLib.AFK.Connections, UserInputService.InputBegan:Connect(MarkActivity))
+	table.insert(OrionLib.AFK.Connections, UserInputService.InputChanged:Connect(MarkActivity))
+	local IdledSuccess, IdledConnection = pcall(function()
+		return LocalPlayer.Idled:Connect(function()
+			OrionLib:SetAFK(true, "roblox-idled")
+		end)
+	end)
+	if IdledSuccess and IdledConnection then
+		table.insert(OrionLib.AFK.Connections, IdledConnection)
+	end
+
+	MarkActivity()
+	local MonitorGeneration = OrionLib.AFK.Generation
+	task.spawn(function()
+		while OrionLib.AFK.Enabled and OrionLib.AFK.Generation == MonitorGeneration do
+			task.wait(1)
+			if os.clock() - LastActivity >= OrionLib.AFK.Timeout then
+				OrionLib:SetAFK(true, "timeout")
+				break
+			end
+		end
+	end)
+	return true
 end
 
 Orion.AncestryChanged:Connect(function(_, Parent)
@@ -962,6 +1049,9 @@ function OrionLib:MakeWindow(WindowConfig)
 	end
 	WindowConfig.IntroText = WindowConfig.IntroText or "Orion Library"
 	WindowConfig.Language = WindowConfig.Language or OrionLib.CurrentLanguage
+	WindowConfig.AFKEnabled = WindowConfig.AFKEnabled == true
+	WindowConfig.AFKTimeout = WindowConfig.AFKTimeout or 300
+	WindowConfig.AFKCallback = WindowConfig.AFKCallback
 	WindowConfig.CloseCallback = WindowConfig.CloseCallback or function() end
 	WindowConfig.ShowIcon = WindowConfig.ShowIcon or false
 	WindowConfig.Icon = WindowConfig.Icon or "rbxassetid://8834748103"
@@ -970,6 +1060,11 @@ function OrionLib:MakeWindow(WindowConfig)
 	OrionLib.SaveCfg = WindowConfig.SaveConfig
 	OrionLib.PerformanceMode = WindowConfig.PerformanceMode
 	OrionLib:SetLanguage(WindowConfig.Language)
+	OrionLib:ConfigureAFK({
+		Enabled = WindowConfig.AFKEnabled,
+		Timeout = WindowConfig.AFKTimeout,
+		Callback = WindowConfig.AFKCallback
+	})
 	if type(WindowConfig.Theme) == "table" then
 		OrionLib:RegisterTheme("Window", WindowConfig.Theme)
 		OrionLib:SetTheme("Window")
@@ -2842,6 +2937,15 @@ function OrionLib:MakeWindow(WindowConfig)
 		Language = function(_, Code)
 			return OrionLib:SetLanguage(Code)
 		end,
+		ConfigureAFK = function(_, Config)
+			return OrionLib:ConfigureAFK(Config)
+		end,
+		SetAFK = function(_, IsAFK, Reason)
+			return OrionLib:SetAFK(IsAFK, Reason)
+		end,
+		IsAFK = function(_)
+			return OrionLib:IsAFK()
+		end,
 		Translate = function(_, Key, Fallback)
 			return OrionLib:Translate(Key, Fallback)
 		end,
@@ -2875,6 +2979,9 @@ function OrionLib:Destroy()
 		return
 	end
 	DisconnectAll()
+	DisconnectAFK()
+	OrionLib.AFK.Enabled = false
+	OrionLib.AFK.Active = false
 
 	for _, Child in ipairs(Orion:GetChildren()) do
 		if Child:IsA("Sound") then

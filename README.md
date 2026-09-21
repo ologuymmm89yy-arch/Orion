@@ -25,6 +25,7 @@ A modern Luau windowing library with a polished Orion-inspired visual style, res
 - Built-in localization for English, Russian, Ukrainian, Polish, Spanish, and German
 - Notification API for status feedback and prompts
 - Built-in icon mappings with `RegisterIcon` for custom assets
+- Optional AFK detection with timeout, recovery, and callback support
 - Adaptive behavior for desktop and mobile layouts
 
 ## Example usage
@@ -45,6 +46,14 @@ Window:Notification({
     Name = "Loaded",
     Content = "Theme updated successfully",
     Time = 4,
+})
+
+Window:ConfigureAFK({
+    Enabled = true,
+    Timeout = 300,
+    Callback = function(IsAFK, Reason)
+        print("AFK state:", IsAFK, Reason)
+    end,
 })
 ```
 

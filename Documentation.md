@@ -70,7 +70,28 @@ MusicId = <number|string> - Optional Roblox audio asset ID to play when the wind
 MusicVolume = <number> - Initial music volume from 0 to 10.
 MusicLooped = <bool> - Whether configured music should loop.
 Language = <string> - Built-in language code: en, ru, uk, pl, es, or de.
+AFKEnabled = <bool> - Enables optional inactivity detection. Disabled by default.
+AFKTimeout = <number> - Seconds without input before AFK state, minimum 10.
+AFKCallback = <function> - Called with (isAFK, reason) when the state changes.
 ]]
+```
+
+### AFK support
+
+AFK detection is opt-in and uses standard Roblox input signals. It marks the user as AFK after the configured timeout, returns to active on input, and also listens for `LocalPlayer.Idled` when available.
+
+```lua
+local Window = OrionLib:MakeWindow({
+	Name = "AFK-aware UI",
+	AFKEnabled = true,
+	AFKTimeout = 300,
+	AFKCallback = function(IsAFK, Reason)
+		print(IsAFK and "User is AFK" or "User is active", Reason)
+	end,
+})
+
+Window:SetAFK(false, "manual")
+print(Window:IsAFK())
 ```
 
 ### Media and animations
