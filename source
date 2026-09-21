@@ -1987,6 +1987,31 @@ function OrionLib:MakeWindow(WindowConfig)
 				})
 				CodeBox.Parent = EditorFrame
 				AddThemeObject(MakeElement("Stroke"), "Stroke").Parent = EditorFrame
+				local CompletionFrame = SetProps(MakeElement("RoundFrame", Color3.fromRGB(28, 32, 42), 0, 6), {
+					Size = UDim2.new(0, 190, 0, 126),
+					Position = UDim2.new(1, -198, 0, 8),
+					Visible = false,
+					ZIndex = 20,
+					ClipsDescendants = true,
+					Parent = EditorFrame
+				})
+				SetChildren(CompletionFrame, {
+					Create("UIListLayout", {
+						Padding = UDim.new(0, 2),
+						SortOrder = Enum.SortOrder.LayoutOrder
+					}),
+					Create("UIPadding", {
+						PaddingTop = UDim.new(0, 5),
+						PaddingLeft = UDim.new(0, 5),
+						PaddingRight = UDim.new(0, 5),
+						PaddingBottom = UDim.new(0, 5)
+					})
+				})
+				local Completions = EditorConfig.Completions or {
+					"local", "function", "return", "if", "then", "else", "end", "for", "while", "do",
+					"Color3", "UDim2", "Instance", "TweenInfo", "OrionLib", "MakeWindow", "MakeTab",
+					"AddButton", "AddToggle", "AddSlider", "AddDropdown", "AddTextbox", "MakeNotification"
+				}
 
 				local function UpdateLineNumbers()
 					local Lines = 1
@@ -2001,8 +2026,59 @@ function OrionLib:MakeWindow(WindowConfig)
 					Editor.Text = CodeBox.Text
 				end
 
+				local function GetCurrentToken()
+					return string.match(CodeBox.Text, "([%w_]+)$") or ""
+				end
+
+				local function ReplaceCurrentToken(Completion)
+					local Token = GetCurrentToken()
+					local Prefix = string.sub(CodeBox.Text, 1, #CodeBox.Text - #Token)
+					CodeBox.Text = Prefix .. Completion
+					CodeBox.CursorPosition = #CodeBox.Text + 1
+					CompletionFrame.Visible = false
+				end
+
+				local function UpdateCompletions()
+					local Token = string.lower(GetCurrentToken())
+					for _, Child in ipairs(CompletionFrame:GetChildren()) do
+						if Child:IsA("TextButton") then
+							Child:Destroy()
+						end
+					end
+					if Token == "" or Editor.ReadOnly then
+						CompletionFrame.Visible = false
+						return
+					end
+					local MatchCount = 0
+					for _, Completion in ipairs(Completions) do
+						if MatchCount >= 6 then
+							break
+						end
+						if string.sub(string.lower(tostring(Completion)), 1, #Token) == Token then
+							MatchCount += 1
+							local Button = SetProps(MakeElement("Button"), {
+								Size = UDim2.new(1, 0, 0, 17),
+								ZIndex = 21,
+								LayoutOrder = MatchCount
+							})
+							local Label = SetProps(MakeElement("Label", tostring(Completion), 12), {
+								Size = UDim2.new(1, -8, 1, 0),
+								Position = UDim2.new(0, 4, 0, 0),
+								ZIndex = 22
+							})
+							SetChildren(Button, {Label})
+							AddConnection(Button.MouseButton1Click, function()
+								ReplaceCurrentToken(tostring(Completion))
+							end)
+							Button.Parent = CompletionFrame
+						end
+					end
+					CompletionFrame.Visible = MatchCount > 0
+				end
+
 				AddConnection(CodeBox:GetPropertyChangedSignal("Text"), function()
 					UpdateLineNumbers()
+					UpdateCompletions()
 					if type(EditorConfig.Callback) == "function" then
 						EditorConfig.Callback(CodeBox.Text)
 					end
@@ -2051,6 +2127,12 @@ function OrionLib:MakeWindow(WindowConfig)
 				function Editor:SetReadOnly(ReadOnly)
 					self.ReadOnly = ReadOnly == true
 					CodeBox.TextEditable = not self.ReadOnly
+				end
+				function Editor:SetCompletions(Values)
+					if type(Values) == "table" then
+						Completions = Values
+						UpdateCompletions()
+					end
 				end
 				Editor.Frame = EditorFrame
 				Editor.Input = CodeBox

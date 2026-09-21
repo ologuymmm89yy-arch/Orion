@@ -67,6 +67,7 @@ local Editor = Window:MakeTab({Name = "Tools"}):AddCodeEditor({
 print(Editor:Get())
 print(#Editor:Find("print"))
 Editor:ReplaceAll("Hello", "Welcome")
+Editor:SetCompletions({"local", "function", "OrionLib", "MakeWindow"})
 ```
 
 Available language codes: `en`, `ru`, `uk`, `pl`, `es`, `de`.
