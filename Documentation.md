@@ -32,7 +32,6 @@ local Editor = Tools:AddCodeEditor({
 Editor:Set("local Ready = true")
 print(Editor:Get())
 Editor:Clear()
-Editor:SetCompletions({"local", "function", "OrionLib", "MakeWindow"})
 ```
 
 Feature packs can be registered as normal Luau modules with guarded lifecycle methods:
