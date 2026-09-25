@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BLACK SENSE - Command Center</title>
     <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/v86@latest/build/libv86.js"></script>
 </head>
 <body>
     <div class="sidebar">
@@ -21,9 +22,7 @@
     </div>
 
     <div class="main">
-        <!-- Вкладка IDE -->
         <div id="editor" class="tab-content active">
-            <!-- AI Bar -->
             <div class="ai-bar">
                 <select id="ai-provider">
                     <option value="gemini">Google Gemini AI</option>
@@ -35,7 +34,6 @@
             </div>
 
             <div class="ide-container">
-                <!-- Дерево файлов -->
                 <div class="file-tree">
                     <div class="tree-header">
                         <span>📁 SIGMA_PROJECT</span>
@@ -44,19 +42,11 @@
                             <button title="Удалить активный файл" onclick="deleteActiveFile()">🗑️</button>
                         </div>
                     </div>
-                    <ul id="file-list-ul">
-                        <!-- Динамически заполняется через JS -->
-                    </ul>
+                    <ul id="file-list-ul"></ul>
                 </div>
 
-                <!-- Рабочая область с Вкладками (Tabs) -->
                 <div class="editor-workspace">
-                    <!-- Панель открытых вкладок -->
-                    <div class="tabs-bar" id="tabs-bar">
-                        <!-- Вкладки заносятся через JS -->
-                    </div>
-
-                    <!-- Панель инструментов редактора -->
+                    <div class="tabs-bar" id="tabs-bar"></div>
                     <div class="editor-toolbar">
                         <span id="current-file-label">/select_file.rs</span>
                         <div class="toolbar-actions">
@@ -75,20 +65,41 @@
             </div>
         </div>
 
-        <!-- Вкладки Эмулятора и Админки -->
         <div id="vm" class="tab-content">
-            <h2>ISO Manager & v86 Engine</h2>
-            <input type="file" id="iso-input" accept=".iso">
-            <div id="screen-container">Эмулятор готов к загрузке ISO...</div>
+            <div class="ai-bar" style="align-items: center; justify-content: space-between;">
+                <div style="display: flex; gap: 10px; align-items: center; flex: 1;">
+                    <span style="font-size: 0.8rem; color: var(--text-muted);">ISO Manager & v86 Engine</span>
+                    <select id="iso-source-select" onchange="handleIsoSourceChange(this.value)" style="background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border-color); padding: 6px 10px; border-radius: 6px; font-size: 0.75rem;">
+                        <option value="netinstall">BlackArch Netinstall (815 MB)</option>
+                        <option value="custom">Загрузить свой .iso файл</option>
+                    </select>
+                    <select id="desktop-env-select" style="background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border-color); padding: 6px 10px; border-radius: 6px; font-size: 0.75rem;">
+                        <option value="i3">i3 Window Manager</option>
+                        <option value="cli">CLI (Только консоль)</option>
+                    </select>
+                </div>
+                <button id="btn-load-iso" onclick="loadSelectedIso()" style="background: var(--accent-blue); color: #000; border: none; padding: 6px 14px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 0.75rem;">Запустить ISO</button>
+                <input type="file" id="iso-input" accept=".iso" style="display: none;">
+            </div>
+            <div id="screen-container" style="flex: 1; background: #000; border: 1px solid var(--border-color); border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative;">
+                <div style="color: var(--text-muted); font-size: 0.85rem; text-align: center;">
+                    Эмулятор готов к загрузке ISO...<br>
+                    <span style="font-size: 0.7rem; color: var(--accent-blue);">Выберите образ и нажмите «Запустить ISO»</span>
+                </div>
+            </div>
         </div>
 
         <div id="admin" class="tab-content">
             <h2>Системная панель</h2>
-            <div id="admin-output">Система готова. Ожидание команд...</div>
+            <div id="admin-output" style="margin-top: 10px; font-size: 0.8rem; line-height: 1.5; color: #cbd5e1;">
+                Система готова. Ожидание команд...<br>
+                > Запуск системной диагностики ✅<br>
+                > [DNS] Мост активен: IP 1.1.1.1<br>
+                > Процессор: 8 ядер | Память: 8 ГБ
+            </div>
         </div>
     </div>
 
-    <!-- Модалка Настроек API -->
     <div id="settings-modal" class="modal-hidden">
         <div class="modal-content">
             <div class="modal-header">
@@ -98,20 +109,16 @@
             <div class="modal-body">
                 <label>Google Gemini API Key:</label>
                 <input type="password" id="key-gemini" placeholder="AIzaSy...">
-
                 <label>Anthropic Claude API Key:</label>
                 <input type="password" id="key-anthropic" placeholder="sk-ant-api...">
-
                 <label>Groq API Key:</label>
                 <input type="password" id="key-groq" placeholder="gsk_...">
-
-                <p class="small-text">💡 Ключи хранятся в браузере и не передаются третьим лицам.</p>
+                <p class="small-text">💡 Ключи хранятся локально в браузере.</p>
                 <button onclick="saveApiKeys()">💾 Сохранить</button>
             </div>
         </div>
     </div>
 
-    <!-- DevTools -->
     <div id="devtools-panel" class="devtools-hidden">
         <div class="devtools-header">
             <div class="devtools-tabs">
@@ -124,7 +131,7 @@
             <div id="devtools-logs"></div>
             <div class="devtools-input-area">
                 <span>&gt;</span>
-                <input type="text" id="devtools-input" placeholder="Введите JS / Lua..." onkeydown="handleDevToolsExec(event)">
+                <input type="text" id="devtools-input" placeholder="Введите команду или JS..." onkeydown="handleDevToolsExec(event)">
             </div>
         </div>
         <div id="dt-pane-network" class="dt-pane">
@@ -136,8 +143,6 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/wasmoon@1.16.0/dist/index.js"></script>
-    <script src="js/dns_bridge.js"></script>
-    <script src="js/admin_panel.js"></script>
     <script src="js/app.js"></script>
 </body>
 </html>
