@@ -13,27 +13,22 @@ function getSafeFiles() {
     try {
         const raw = localStorage.getItem('black_sense_files');
         if (!raw) throw new Error("No data");
-        
         const parsed = JSON.parse(raw);
-        // Жесткая проверка: если это не объект, или он пустой, или нет структуры файла
         if (typeof parsed !== 'object' || Array.isArray(parsed) || Object.keys(parsed).length === 0) {
             throw new Error("Corrupted data");
         }
-        
         const firstKey = Object.keys(parsed)[0];
         if (!parsed[firstKey] || typeof parsed[firstKey].content === 'undefined') {
             throw new Error("Invalid file structure");
         }
-        
         return parsed;
     } catch (e) {
-        console.warn("[FS]: Данные повреждены или отсутствуют. Выполняю Factory Reset...");
+        console.warn("[FS]: Данные повреждены или отсутствуют. Автоматический сброс...");
         localStorage.removeItem('black_sense_files');
-        return JSON.parse(JSON.stringify(DEFAULT_FILES)); // Возвращаем чистую копию
+        return JSON.parse(JSON.stringify(DEFAULT_FILES));
     }
 }
 
-// Глобальное состояние IDE
 let files = getSafeFiles();
 let openTabs = Object.keys(files).length > 0 ? [Object.keys(files)[0]] : ['core/main.rs'];
 let activeFile = openTabs[0];
@@ -44,22 +39,20 @@ function saveFileSystem() {
     localStorage.setItem('black_sense_files', JSON.stringify(files));
 }
 
-// Глобальная функция для ручного сброса (можно вызвать из консоли)
 window.hardReset = function() {
     localStorage.clear();
     location.reload();
 };
 
-
 // ==========================================
-// 2. ИНТЕРФЕЙС И РЕДАКТОР (MONACO)
+// 2. ИНИЦИАЛИЗАЦИЯ И ИНТЕРФЕЙС
 // ==========================================
-document.addEventListener('DOMContentLoaded', () => {
-    // 1. Отрисовка UI сразу (чтобы не ждать загрузки редактора)
+function startIDE() {
+    console.log("[BLACK SENSE]: Инициализация системы...");
     renderFileTree();
     renderTabs();
 
-    // 2. Навигация бокового меню
+    // Навигация бокового меню
     document.querySelectorAll('.menu-item').forEach(item => {
         item.addEventListener('click', () => {
             document.querySelectorAll('.menu-item').forEach(i => i.classList.remove('active'));
@@ -70,36 +63,37 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // 3. Инициализация Monaco Editor
+    // Monaco Editor
     if (window.require) {
         require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' }});
         require(['vs/editor/editor.main'], function() {
-            codeEditor = monaco.editor.create(document.getElementById('editor-container'), {
-                value: files[activeFile] ? files[activeFile].content : '',
-                language: files[activeFile] ? files[activeFile].lang : 'plaintext',
-                theme: 'vs-dark',
-                automaticLayout: true,
-                fontSize: 14,
-                minimap: { enabled: true }
-            });
+            const container = document.getElementById('editor-container');
+            if (container) {
+                codeEditor = monaco.editor.create(container, {
+                    value: files[activeFile] ? files[activeFile].content : '',
+                    language: files[activeFile] ? files[activeFile].lang : 'plaintext',
+                    theme: 'vs-dark',
+                    automaticLayout: true,
+                    fontSize: 14,
+                    minimap: { enabled: true }
+                });
 
-            codeEditor.onDidChangeModelContent(() => {
-                if (files[activeFile]) {
-                    files[activeFile].content = codeEditor.getValue();
+                codeEditor.onDidChangeModelContent(() => {
+                    if (files[activeFile]) {
+                        files[activeFile].content = codeEditor.getValue();
+                        saveFileSystem();
+                    }
+                });
+
+                codeEditor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, function() {
                     saveFileSystem();
-                }
-            });
-
-            codeEditor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, function() {
-                saveFileSystem();
-                console.log(`[FS]: Файл ${activeFile} сохранен.`);
-            });
+                    console.log(`[FS]: Файл ${activeFile} сохранен.`);
+                });
+            }
         });
-    } else {
-        console.error("[Monaco Error]: Скрипт редактора не загрузился с CDN.");
     }
 
-    // 4. Обработчик загрузки локального ISO
+    // Обработчик загрузки ISO
     const isoInput = document.getElementById('iso-input');
     if (isoInput) {
         isoInput.addEventListener('change', function(e) {
@@ -107,34 +101,41 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!file) return;
 
             const screenContainer = document.getElementById('screen-container');
-            screenContainer.innerHTML = `<div style="padding: 20px; color: #38bdf8; text-align: center;">Загрузка ISO (${(file.size / (1024*1024)).toFixed(1)} MB) в память v86...</div>`;
+            if (screenContainer) {
+                screenContainer.innerHTML = `<div style="padding: 20px; color: #38bdf8; text-align: center;">Загрузка ISO (${(file.size / (1024*1024)).toFixed(1)} MB) в память...</div>`;
 
-            const reader = new FileReader();
-            reader.onload = function(event) {
-                const buffer = event.target.result;
-                screenContainer.innerHTML = ''; 
-
-                try {
-                    window.v86_emulator = new V86({
-                        wasm_path: "https://cdn.jsdelivr.net/npm/v86@latest/build/v86.wasm",
-                        screen_container: screenContainer,
-                        bios: { url: "https://unpkg.com/v86@latest/bios/seabios.bin" },
-                        vga_bios: { url: "https://unpkg.com/v86@latest/bios/vgabios.bin" },
-                        cdrom: { buffer: buffer },
-                        autostart: true,
-                        memory_size: 512 * 1024 * 1024,
-                        vga_memory_size: 8 * 1024 * 1024
-                    });
-                    console.log("[v86]: Успешный запуск образа:", file.name);
-                } catch (err) {
-                    console.error("[v86 Error]:", err.message);
-                }
-            };
-            reader.readAsArrayBuffer(file);
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const buffer = event.target.result;
+                    screenContainer.innerHTML = ''; 
+                    try {
+                        window.v86_emulator = new V86({
+                            wasm_path: "https://cdn.jsdelivr.net/npm/v86@latest/build/v86.wasm",
+                            screen_container: screenContainer,
+                            bios: { url: "https://unpkg.com/v86@latest/bios/seabios.bin" },
+                            vga_bios: { url: "https://unpkg.com/v86@latest/bios/vgabios.bin" },
+                            cdrom: { buffer: buffer },
+                            autostart: true,
+                            memory_size: 512 * 1024 * 1024,
+                            vga_memory_size: 8 * 1024 * 1024
+                        });
+                        console.log("[v86]: Образ запущен:", file.name);
+                    } catch (err) {
+                        console.error("[v86 Error]:", err.message);
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            }
         });
     }
-});
+}
 
+// Мгновенный запуск без задержки DOM
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', startIDE);
+} else {
+    startIDE();
+}
 
 // ==========================================
 // 3. УПРАВЛЕНИЕ ФАЙЛАМИ И ВКЛАДКАМИ
@@ -154,7 +155,7 @@ function renderTabs() {
 
         const closeSpan = document.createElement('span');
         closeSpan.className = 'tab-close';
-        closeSpan.innerText = '✕';
+        closeSpan.innerText = ' ✕';
         closeSpan.onclick = (e) => {
             e.stopPropagation();
             closeTab(filepath);
@@ -254,7 +255,6 @@ window.changeLanguage = function(lang) {
     }
 };
 
-
 // ==========================================
 // 4. AI ГЕНЕРАТОР & ЗАПУСК КОДА
 // ==========================================
@@ -270,7 +270,7 @@ window.generateAICode = async function() {
     }
 
     if (!activeFile || !files[activeFile]) {
-        alert('Пожалуйста, выберите или создайте файл для вставки кода!');
+        alert('Выберите или создайте файл для вставки кода!');
         return;
     }
 
@@ -282,7 +282,7 @@ window.generateAICode = async function() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    contents: [{ parts: [{ text: `Напиши чистый код для языка ${currentLanguage} по запросу: ${promptText}. Выдавай ТОЛЬКО код без форматирования Markdown.` }] }]
+                    contents: [{ parts: [{ text: `Напиши чистый код для языка ${currentLanguage} по запросу: ${promptText}. Выдавай ТОЛЬКО код без Markdown.` }] }]
                 })
             });
             const data = await res.json();
@@ -305,16 +305,15 @@ window.generateAICode = async function() {
 window.runCurrentCode = async function() {
     if (!codeEditor) return;
     const code = codeEditor.getValue();
-    console.log(`[Runner]: Запуск ${currentLanguage}...`);
+    console.log(`[Runner]: Запуск (${currentLanguage})...`);
 
     if (currentLanguage === 'javascript') {
         try { eval(code); } 
         catch (e) { console.error('[JS Error]:', e.message); }
     } else {
-        console.log(`[Emulation]: Скомпилировано (${currentLanguage}). Для запуска нужен бэкенд.`);
+        console.log(`[Emulation]: Скомпилировано (${currentLanguage}). Для прямого выполнения требуется серверный компилятор.`);
     }
 };
-
 
 // ==========================================
 // 5. ГЛОБАЛЬНЫЕ ОКНА И DEVTOOLS
@@ -348,15 +347,14 @@ window.switchDtTab = function(tabName) {
     document.querySelectorAll('.dt-tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.dt-pane').forEach(p => p.classList.remove('active'));
     if (tabName === 'console') {
-        document.querySelector('.dt-tab:nth-child(1)').classList.add('active');
-        document.getElementById('dt-pane-console').classList.add('active');
+        document.querySelectorAll('.dt-tab')[0]?.classList.add('active');
+        document.getElementById('dt-pane-console')?.classList.add('active');
     } else {
-        document.querySelector('.dt-tab:nth-child(2)').classList.add('active');
-        document.getElementById('dt-pane-network').classList.add('active');
+        document.querySelectorAll('.dt-tab')[1]?.classList.add('active');
+        document.getElementById('dt-pane-network')?.classList.add('active');
     }
 };
 
-// Перехват консоли для кастомного DevTools
 (function() {
     const oldLog = console.log;
     const oldError = console.error;
@@ -382,6 +380,7 @@ window.handleDevToolsExec = function(event) {
         const input = document.getElementById('devtools-input');
         const logs = document.getElementById('devtools-logs');
         const val = input.value;
+        if (!val) return;
         logs.innerHTML += `<div>> ${val}</div>`;
         try {
             const res = eval(val);
@@ -397,9 +396,11 @@ window.handleDevToolsExec = function(event) {
 window.handleIsoSourceChange = function(val) {
     const fileInput = document.getElementById('iso-input');
     if (val === 'custom') {
-        fileInput.style.display = 'inline-block';
-        fileInput.click();
-    } else {
+        if (fileInput) {
+            fileInput.style.display = 'inline-block';
+            fileInput.click();
+        }
+    } else if (fileInput) {
         fileInput.style.display = 'none';
     }
 };
@@ -407,9 +408,12 @@ window.handleIsoSourceChange = function(val) {
 window.loadSelectedIso = function() {
     const source = document.getElementById('iso-source-select').value;
     if (source === 'netinstall') {
-        alert(`Выберите скачанный .iso файл через меню для загрузки.`);
+        alert('Выберите скачанный .iso файл через меню для загрузки.');
         document.getElementById('iso-source-select').value = 'custom';
-        document.getElementById('iso-input').style.display = 'inline-block';
-        document.getElementById('iso-input').click();
+        const fileInput = document.getElementById('iso-input');
+        if (fileInput) {
+            fileInput.style.display = 'inline-block';
+            fileInput.click();
+        }
     }
 };
