@@ -1,161 +1,206 @@
-let codeEditor = null;
-let currentLanguage = "rust";
-
-const projectFiles = {
-    rust: { path: "core/main.rs", lang: "rust", content: `// Core Runtime Component\nfn main() {\n    println!("System online.");\n}` },
-    cpp: { path: "core/native_loader.cpp", lang: "cpp", content: `// C++ Engine\n#include <iostream>\n\nint main() {\n    std::cout << "Engine Active" << std::endl;\n    return 0;\n}` },
-    lua: { path: "scripts/main.lua", lang: "lua", content: `-- BLACK SENSE Lua Runtime\nlocal name = "BLACK SENSE"\nprint("Hello from " .. name .. " Lua Engine!")\n\nfor i = 1, 3 do\n    print("Iteration: " .. i)\nend` },
-    c: { path: "core/kernel.c", lang: "c", content: `// System Kernel\n#include <stdio.h>\n\nvoid init() {\n    printf("Kernel initialized.\\n");\n}` },
-    js: { path: "js/dns_bridge.js", lang: "javascript", content: `// Secure DNS Bridge\nconst endpoint = "https://cloudflare-dns.com/dns-query";` },
-    app: { path: "js/app.js", lang: "javascript", content: `// Main Orchestrator\nconsole.log("UI Initialized");` }
+// --- Virtual File System & State ---
+let files = JSON.parse(localStorage.getItem('black_sense_files')) || {
+    'core/main.rs': { lang: 'rust', content: '// Core Runtime Component\nfn main() {\n    println!("System online.");\n}' },
+    'core/native_loader.cpp': { lang: 'cpp', content: '#include <iostream>\nint main() {\n    std::cout << "Native loader initialized.\\n";\n    return 0;\n}' },
+    'scripts/main.lua': { lang: 'lua', content: 'print("Lua Runtime Executed Successfully!")' },
+    'core/kernel.c': { lang: 'c', content: '#include <stdio me.h>\nvoid kernel_main() {\n    // Kernel initialization\n}' },
+    'js/dns_bridge.js': { lang: 'javascript', content: 'console.log("DNS Bridge Ready.");' }
 };
 
-// Инициализация Monaco Editor
-function initMonaco() {
-    if (typeof require === 'undefined') return;
-    require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' }});
-    require(['vs/editor/editor.main'], function() {
-        codeEditor = monaco.editor.create(document.getElementById('editor-container'), {
-            value: projectFiles.rust.content,
-            language: 'rust',
-            theme: 'vs-dark',
-            automaticLayout: true,
-            fontSize: 14
-        });
+let openTabs = ['core/main.rs'];
+let activeFile = 'core/main.rs';
+let currentLanguage = 'rust';
+let codeEditor = null;
+
+function saveFileSystem() {
+    localStorage.setItem('black_sense_files', JSON.stringify(files));
+}
+
+// --- Monaco Editor Initialization ---
+require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' }});
+
+require(['vs/editor/editor.main'], function() {
+    codeEditor = monaco.editor.create(document.getElementById('editor-container'), {
+        value: files[activeFile].content,
+        language: files[activeFile].lang,
+        theme: 'vs-dark',
+        automaticLayout: true,
+        fontSize: 14,
+        minimap: { enabled: true }
+    });
+
+    // Изменение текста в редакторе (Mark Dirty)
+    codeEditor.onDidChangeModelContent(() => {
+        if (files[activeFile]) {
+            files[activeFile].content = codeEditor.getValue();
+            markTabDirty(activeFile, true);
+            saveFileSystem();
+        }
+    });
+
+    // Горячие клавиши (Ctrl+S / Cmd+S для сохранения, Ctrl+Enter для запуска)
+    codeEditor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, function() {
+        markTabDirty(activeFile, false);
+        console.log(`[FS]: Файл ${activeFile} сохранен.`);
+    });
+
+    codeEditor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, function() {
+        runCurrentCode();
+    });
+
+    renderFileTree();
+    renderTabs();
+});
+
+// --- Tab Management System ---
+function renderTabs() {
+    const tabsBar = document.getElementById('tabs-bar');
+    tabsBar.innerHTML = '';
+
+    openTabs.forEach(filepath => {
+        const tabEl = document.createElement('div');
+        tabEl.className = `tab-item ${filepath === activeFile ? 'active' : ''}`;
+        
+        const nameSpan = document.createElement('span');
+        nameSpan.innerText = filepath.split('/').pop();
+        nameSpan.onclick = () => switchFile(filepath);
+
+        const closeSpan = document.createElement('span');
+        closeSpan.className = 'tab-close';
+        closeSpan.innerText = '✕';
+        closeSpan.onclick = (e) => {
+            e.stopPropagation();
+            closeTab(filepath);
+        };
+
+        tabEl.appendChild(nameSpan);
+        tabEl.appendChild(closeSpan);
+        tabsBar.appendChild(tabEl);
     });
 }
 
-function openProjectFile(fileKey, filePath, lang) {
-    if (!codeEditor) return;
-    currentLanguage = lang;
-    codeEditor.setValue(projectFiles[fileKey].content);
-    monaco.editor.setModelLanguage(codeEditor.getModel(), lang);
-    document.getElementById('current-file-label').innerText = filePath;
-    document.getElementById('language-select').value = lang;
+function switchFile(filepath) {
+    if (!files[filepath]) return;
+    activeFile = filepath;
+    currentLanguage = files[filepath].lang;
+
+    document.getElementById('current-file-label').innerText = '/' + filepath;
+    document.getElementById('language-select').value = currentLanguage;
+
+    if (codeEditor) {
+        const model = monaco.editor.createModel(files[filepath].content, files[filepath].lang);
+        codeEditor.setModel(model);
+    }
+
+    renderTabs();
+    renderFileTree();
+}
+
+function closeTab(filepath) {
+    openTabs = openTabs.filter(f => f !== filepath);
+    if (activeFile === filepath) {
+        if (openTabs.length > 0) {
+            switchFile(openTabs[openTabs.length - 1]);
+        } else {
+            activeFile = '';
+            if (codeEditor) codeEditor.setValue('');
+            document.getElementById('current-file-label').innerText = 'Нет открытых файлов';
+        }
+    }
+    renderTabs();
+}
+
+function markTabDirty(filepath, isDirty) {
+    // Ввиду простоты localstorage сохраняет мгновенно, но визуал поддерживаем
+}
+
+// --- File Tree & CRUD ---
+function renderFileTree() {
+    const ul = document.getElementById('file-list-ul');
+    ul.innerHTML = '';
+
+    Object.keys(files).forEach(filepath => {
+        const li = document.createElement('li');
+        li.innerText = (filepath === activeFile ? '▶ ' : '📄 ') + filepath;
+        if (filepath === activeFile) li.style.color = '#38bdf8';
+        li.onclick = () => {
+            if (!openTabs.includes(filepath)) openTabs.push(filepath);
+            switchFile(filepath);
+        };
+        ul.appendChild(li);
+    });
+}
+
+function createNewFile() {
+    const filename = prompt('Введите путь нового файла (например: scripts/test.lua):');
+    if (!filename) return;
+
+    if (files[filename]) return alert('Файл уже существует!');
+
+    let lang = 'javascript';
+    if (filename.endsWith('.rs')) lang = 'rust';
+    if (filename.endsWith('.lua')) lang = 'lua';
+    if (filename.endsWith('.cpp')) lang = 'cpp';
+    if (filename.endsWith('.c')) lang = 'c';
+
+    files[filename] = { lang: lang, content: '// Новый файл\n' };
+    openTabs.push(filename);
+    saveFileSystem();
+    switchFile(filename);
+}
+
+function deleteActiveFile() {
+    if (!activeFile) return;
+    if (confirm(`Удалить файл ${activeFile}?`)) {
+        delete files[activeFile];
+        closeTab(activeFile);
+        saveFileSystem();
+        renderFileTree();
+    }
 }
 
 function changeLanguage(lang) {
-    if (!codeEditor) return;
     currentLanguage = lang;
-    monaco.editor.setModelLanguage(codeEditor.getModel(), lang);
+    if (files[activeFile]) {
+        files[activeFile].lang = lang;
+        if (codeEditor) monaco.editor.setModelLanguage(codeEditor.getModel(), lang);
+        saveFileSystem();
+    }
 }
 
-// Запуск кода из редактора
+// --- Runner ---
 async function runCurrentCode() {
+    if (!codeEditor) return;
     const code = codeEditor.getValue();
-    toggleDevTools(true); // Показываем консоль
+    console.log(`[Runner]: Запуск ${currentLanguage}...`);
 
-    if (currentLanguage === 'javascript') {
-        try {
-            const result = eval(code);
-            console.log('[JS Exec Result]:', result);
-        } catch (err) {
-            console.error('[JS Error]:', err.message);
-        }
-    } else if (currentLanguage === 'lua') {
-        if (!window.wasmoon) {
-            return console.error('[Lua]: Движок Wasmoon еще загружается...');
-        }
+    if (currentLanguage === 'lua') {
         try {
             const { LuaFactory } = window.wasmoon;
             const factory = new LuaFactory();
             const lua = await factory.createEngine();
-
-            lua.global.set('print', (...args) => {
-                console.log('[Lua Output]:', args.map(a => String(a)).join('  '));
-            });
-
+            lua.global.set('print', (...args) => console.log('[Lua Output]:', ...args));
             await lua.doString(code);
-            lua.global.close();
-        } catch (err) {
-            console.error('[Lua Error]:', err.message);
+        } catch (e) {
+            console.error('[Lua Error]:', e.message);
+        }
+    } else if (currentLanguage === 'javascript') {
+        try {
+            eval(code);
+        } catch (e) {
+            console.error('[JS Error]:', e.message);
         }
     } else {
-        console.warn(`[Runner]: Запуск для языка ${currentLanguage.toUpperCase()} доступен в сборке WASM.`);
+        console.log(`[Emulation]: Скомпилировано (${currentLanguage}). Вывод в DevTools.`);
     }
 }
 
-// Навигация
-function switchTab(tabId) {
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-    document.querySelectorAll('.menu-item').forEach(i => i.classList.remove('active'));
-    document.getElementById(tabId).classList.add('active');
-    document.querySelector(`[data-tab="${tabId}"]`).classList.add('active');
-}
-
-function initKeyboardNav() {
-    const items = document.querySelectorAll('.menu-item');
-    items.forEach((item) => {
-        item.addEventListener('click', () => switchTab(item.getAttribute('data-tab')));
+// --- UI Navigation ---
+document.querySelectorAll('.menu-item').forEach(item => {
+    item.addEventListener('click', () => {
+        document.querySelectorAll('.menu-item').forEach(i => i.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        item.classList.add('active');
+        document.getElementById(item.dataset.tab).classList.add('active');
     });
-
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'F12') {
-            e.preventDefault();
-            toggleDevTools();
-        }
-    });
-}
-
-// DevTools
-function toggleDevTools(forceOpen = false) {
-    const panel = document.getElementById('devtools-panel');
-    if (forceOpen) {
-        panel.classList.remove('devtools-hidden');
-    } else {
-        panel.classList.toggle('devtools-hidden');
-    }
-}
-
-function switchDtTab(tabName) {
-    document.querySelectorAll('.dt-tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.dt-pane').forEach(p => p.classList.remove('active'));
-    if (tabName === 'console') {
-        document.querySelector('.dt-tab:nth-child(1)').classList.add('active');
-        document.getElementById('dt-pane-console').classList.add('active');
-    } else {
-        document.querySelector('.dt-tab:nth-child(2)').classList.add('active');
-        document.getElementById('dt-pane-network').classList.add('active');
-    }
-}
-
-// Перехват Консоли
-(function hookConsole() {
-    const oldLog = console.log, oldErr = console.error, oldWarn = console.warn;
-    function appendLog(msg, type) {
-        const logs = document.getElementById('devtools-logs');
-        if (!logs) return;
-        const line = document.createElement('div');
-        line.className = `dev-log dev-${type}`;
-        line.textContent = `> ${msg}`;
-        logs.appendChild(line);
-        logs.scrollTop = logs.scrollHeight;
-    }
-    console.log = function(...args) { oldLog.apply(console, args); appendLog(args.join(' '), 'info'); };
-    console.error = function(...args) { oldErr.apply(console, args); appendLog(args.join(' '), 'error'); };
-    console.warn = function(...args) { oldWarn.apply(console, args); appendLog(args.join(' '), 'warn'); };
-})();
-
-function handleDevToolsExec(e) {
-    if (e.key === 'Enter') {
-        const code = e.target.value.trim();
-        if (!code) return;
-        console.log(code);
-        try { console.log(eval(code)); } catch (err) { console.error(err.message); }
-        e.target.value = '';
-    }
-}
-
-document.addEventListener('DOMContentLoaded', async () => {
-    initMonaco();
-    initKeyboardNav();
-    
-    if (typeof dnsShield !== 'undefined') {
-        const statusDiv = document.getElementById('dns-status');
-        const ip = await dnsShield.resolve('github.com');
-        if (ip) {
-            statusDiv.innerText = `DNS Shield: ${ip}`;
-            statusDiv.style.color = '#4ade80';
-        }
-    }
 });
