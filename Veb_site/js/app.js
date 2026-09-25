@@ -109,7 +109,7 @@ window.handleDevToolsExec = function(event) {
     }
 };
 
-// --- v86 Emulator Logic ---
+// --- v86 Emulator Logic (Явный путь к v86.wasm) ---
 window.handleIsoSourceChange = function(val) {
     const fileInput = document.getElementById('iso-input');
     if (val === 'custom') {
@@ -124,7 +124,7 @@ window.loadSelectedIso = function() {
     const source = document.getElementById('iso-source-select').value;
     const env = document.getElementById('desktop-env-select').value;
     if (source === 'netinstall') {
-        alert(`Выбран режим: BlackArch Netinstall (815MB) с окружением: ${env}. Пожалуйста, выберите скачанный ISO файл через пункт «Загрузить свой .iso файл» для мгновенной загрузки в v86.`);
+        alert(`Выбран режим: BlackArch Netinstall (815MB) с окружением: ${env}. Выберите скачанный .iso файл для быстрого запуска в памяти v86.`);
         document.getElementById('iso-source-select').value = 'custom';
         document.getElementById('iso-input').style.display = 'inline-block';
         document.getElementById('iso-input').click();
@@ -148,6 +148,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 try {
                     window.v86_emulator = new V86({
+                        // Указываем явную ссылку на v86.wasm в CDN
+                        wasm_path: "https://cdn.jsdelivr.net/npm/v86@latest/build/v86.wasm",
                         screen_container: screenContainer,
                         bios: { url: "https://unpkg.com/v86@latest/bios/seabios.bin" },
                         vga_bios: { url: "https://unpkg.com/v86@latest/bios/vgabios.bin" },
@@ -156,7 +158,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         memory_size: 512 * 1024 * 1024,
                         vga_memory_size: 8 * 1024 * 1024
                     });
-                    console.log("[v86]: Запущен образ:", file.name);
+                    console.log("[v86]: Успешный запуск образа:", file.name);
                 } catch (err) {
                     console.error("[v86 Error]:", err.message);
                 }
