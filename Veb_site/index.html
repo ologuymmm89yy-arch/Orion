@@ -7,10 +7,10 @@
     <link rel="stylesheet" href="styles.css">
     <!-- Monaco Editor Loader -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.min.js"></script>
-    <!-- v86 Emulator -->
-    <script src="https://unpkg.com/v86@latest/build/libv86.js"></script>
+    <!-- v86 Emulator Loader -->
+    <script src="https://cdn.jsdelivr.net/npm/v86@latest/build/libv86.js"></script>
 </head>
-<body>
+<body data-theme="cyberpunk">
     <div class="app-container">
         <!-- Боковое меню -->
         <div class="sidebar">
@@ -18,11 +18,11 @@
             <div class="menu-item active" data-tab="editor-tab">📝 Редактор</div>
             <div class="menu-item" data-tab="emulator-tab">🖥️ Эмулятор ISO</div>
             <div class="menu-item" data-tab="ai-tab">🤖 AI Генератор</div>
-            <div class="menu-action" onclick="toggleSettingsModal()">🔑 Настройки API</div>
+            <div class="menu-action" onclick="toggleSettingsModal()">⚙️ Настройки</div>
             <div class="menu-action" onclick="toggleDevTools()">🛠️ DevTools</div>
         </div>
 
-        <!-- Основной рабочий стол -->
+        <!-- Основная рабочая область -->
         <div class="workspace">
             <!-- Вкладка 1: Редактор кода -->
             <div id="editor-tab" class="tab-content active">
@@ -92,6 +92,18 @@
     <!-- Модальное окно настроек -->
     <div id="settings-modal" class="modal modal-hidden">
         <div class="modal-content">
+            <h3>⚙️ Настройки IDE</h3>
+            <div class="form-group">
+                <label>🎨 Оформление (Тема):</label>
+                <select id="theme-select" onchange="changeAppTheme(this.value)">
+                    <option value="cyberpunk">Cyberpunk Dark</option>
+                    <option value="dracula">Dracula</option>
+                    <option value="nord">Nord Deep</option>
+                    <option value="monokai">Monokai Pro</option>
+                    <option value="light">GitHub Light</option>
+                </select>
+            </div>
+            <hr style="border:0; border-top:1px solid var(--border);">
             <h3>🔑 API Ключи ИИ</h3>
             <div class="form-group">
                 <label>Gemini API Key:</label>
@@ -128,7 +140,7 @@
         </div>
     </div>
 
-    <!-- Подключение скрипта из папки js/ -->
+    <!-- Подключение JS -->
     <script src="js/app.js"></script>
 </body>
 </html>
