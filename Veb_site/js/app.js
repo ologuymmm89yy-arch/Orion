@@ -1,9 +1,65 @@
+// --- Глобальные обработчики для интерфейса (чтобы кнопки работали сразу) ---
+window.toggleSettingsModal = function() {
+    const modal = document.getElementById('settings-modal');
+    if (modal) {
+        modal.classList.toggle('modal-hidden');
+        if (!modal.classList.contains('modal-hidden')) {
+            document.getElementById('key-gemini').value = localStorage.getItem('key_gemini') || '';
+            document.getElementById('key-anthropic').value = localStorage.getItem('key_anthropic') || '';
+            document.getElementById('key-groq').value = localStorage.getItem('key_groq') || '';
+        }
+    }
+};
+
+window.toggleDevTools = function() {
+    const dt = document.getElementById('devtools-panel');
+    if (dt) dt.classList.toggle('devtools-hidden');
+};
+
+window.switchDtTab = function(tabName) {
+    document.querySelectorAll('.dt-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.dt-pane').forEach(p => p.classList.remove('active'));
+    if (tabName === 'console') {
+        document.querySelector('.dt-tab:nth-child(1)').classList.add('active');
+        document.getElementById('dt-pane-console').classList.add('active');
+    } else {
+        document.querySelector('.dt-tab:nth-child(2)').classList.add('active');
+        document.getElementById('dt-pane-network').classList.add('active');
+    }
+};
+
+window.saveApiKeys = function() {
+    localStorage.setItem('key_gemini', document.getElementById('key-gemini').value.trim());
+    localStorage.setItem('key_anthropic', document.getElementById('key-anthropic').value.trim());
+    localStorage.setItem('key_groq', document.getElementById('key-groq').value.trim());
+    alert('✅ API ключи сохранены в localStorage!');
+    toggleSettingsModal();
+};
+
+window.handleDevToolsExec = function(event) {
+    if (event.key === 'Enter') {
+        const input = document.getElementById('devtools-input');
+        const logs = document.getElementById('devtools-logs');
+        const val = input.value;
+        logs.innerHTML += `<div>> ${val}</div>`;
+        try {
+            const res = eval(val);
+            logs.innerHTML += `<div style="color: #38bdf8;">< ${res}</div>`;
+        } catch (e) {
+            logs.innerHTML += `<div style="color: #ef4444;">< ${e.message}</div>`;
+        }
+        input.value = '';
+        logs.scrollTop = logs.scrollHeight;
+    }
+};
+
+
 // --- Virtual File System & State ---
 let files = JSON.parse(localStorage.getItem('black_sense_files')) || {
     'core/main.rs': { lang: 'rust', content: '// Core Runtime Component\nfn main() {\n    println!("System online.");\n}' },
     'core/native_loader.cpp': { lang: 'cpp', content: '#include <iostream>\nint main() {\n    std::cout << "Native loader initialized.\\n";\n    return 0;\n}' },
     'scripts/main.lua': { lang: 'lua', content: 'print("Lua Runtime Executed Successfully!")' },
-    'core/kernel.c': { lang: 'c', content: '#include <stdio me.h>\nvoid kernel_main() {\n    // Kernel initialization\n}' },
+    'core/kernel.c': { lang: 'c', content: '#include <stdio.h>\nvoid kernel_main() {\n    // Kernel initialization\n}' },
     'js/dns_bridge.js': { lang: 'javascript', content: 'console.log("DNS Bridge Ready.");' }
 };
 
@@ -16,31 +72,29 @@ function saveFileSystem() {
     localStorage.setItem('black_sense_files', JSON.stringify(files));
 }
 
+
 // --- Monaco Editor Initialization ---
 require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' }});
 
 require(['vs/editor/editor.main'], function() {
     codeEditor = monaco.editor.create(document.getElementById('editor-container'), {
-        value: files[activeFile].content,
-        language: files[activeFile].lang,
+        value: files[activeFile] ? files[activeFile].content : '// Выберите файл',
+        language: files[activeFile] ? files[activeFile].lang : 'plaintext',
         theme: 'vs-dark',
         automaticLayout: true,
         fontSize: 14,
         minimap: { enabled: true }
     });
 
-    // Изменение текста в редакторе (Mark Dirty)
     codeEditor.onDidChangeModelContent(() => {
         if (files[activeFile]) {
             files[activeFile].content = codeEditor.getValue();
-            markTabDirty(activeFile, true);
             saveFileSystem();
         }
     });
 
-    // Горячие клавиши (Ctrl+S / Cmd+S для сохранения, Ctrl+Enter для запуска)
     codeEditor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, function() {
-        markTabDirty(activeFile, false);
+        saveFileSystem();
         console.log(`[FS]: Файл ${activeFile} сохранен.`);
     });
 
@@ -52,9 +106,11 @@ require(['vs/editor/editor.main'], function() {
     renderTabs();
 });
 
+
 // --- Tab Management System ---
 function renderTabs() {
     const tabsBar = document.getElementById('tabs-bar');
+    if (!tabsBar) return;
     tabsBar.innerHTML = '';
 
     openTabs.forEach(filepath => {
@@ -79,13 +135,15 @@ function renderTabs() {
     });
 }
 
-function switchFile(filepath) {
+window.switchFile = function(filepath) {
     if (!files[filepath]) return;
     activeFile = filepath;
     currentLanguage = files[filepath].lang;
 
-    document.getElementById('current-file-label').innerText = '/' + filepath;
-    document.getElementById('language-select').value = currentLanguage;
+    const label = document.getElementById('current-file-label');
+    const langSelect = document.getElementById('language-select');
+    if (label) label.innerText = '/' + filepath;
+    if (langSelect) langSelect.value = currentLanguage;
 
     if (codeEditor) {
         const model = monaco.editor.createModel(files[filepath].content, files[filepath].lang);
@@ -94,7 +152,7 @@ function switchFile(filepath) {
 
     renderTabs();
     renderFileTree();
-}
+};
 
 function closeTab(filepath) {
     openTabs = openTabs.filter(f => f !== filepath);
@@ -104,19 +162,18 @@ function closeTab(filepath) {
         } else {
             activeFile = '';
             if (codeEditor) codeEditor.setValue('');
-            document.getElementById('current-file-label').innerText = 'Нет открытых файлов';
+            const label = document.getElementById('current-file-label');
+            if (label) label.innerText = 'Нет открытых файлов';
         }
     }
     renderTabs();
 }
 
-function markTabDirty(filepath, isDirty) {
-    // Ввиду простоты localstorage сохраняет мгновенно, но визуал поддерживаем
-}
 
 // --- File Tree & CRUD ---
 function renderFileTree() {
     const ul = document.getElementById('file-list-ul');
+    if (!ul) return;
     ul.innerHTML = '';
 
     Object.keys(files).forEach(filepath => {
@@ -131,7 +188,7 @@ function renderFileTree() {
     });
 }
 
-function createNewFile() {
+window.createNewFile = function() {
     const filename = prompt('Введите путь нового файла (например: scripts/test.lua):');
     if (!filename) return;
 
@@ -147,9 +204,10 @@ function createNewFile() {
     openTabs.push(filename);
     saveFileSystem();
     switchFile(filename);
-}
+    renderFileTree();
+};
 
-function deleteActiveFile() {
+window.deleteActiveFile = function() {
     if (!activeFile) return;
     if (confirm(`Удалить файл ${activeFile}?`)) {
         delete files[activeFile];
@@ -157,19 +215,20 @@ function deleteActiveFile() {
         saveFileSystem();
         renderFileTree();
     }
-}
+};
 
-function changeLanguage(lang) {
+window.changeLanguage = function(lang) {
     currentLanguage = lang;
     if (files[activeFile]) {
         files[activeFile].lang = lang;
         if (codeEditor) monaco.editor.setModelLanguage(codeEditor.getModel(), lang);
         saveFileSystem();
     }
-}
+};
 
-// --- Runner ---
-async function runCurrentCode() {
+
+// --- Runner Engine ---
+window.runCurrentCode = async function() {
     if (!codeEditor) return;
     const code = codeEditor.getValue();
     console.log(`[Runner]: Запуск ${currentLanguage}...`);
@@ -191,16 +250,77 @@ async function runCurrentCode() {
             console.error('[JS Error]:', e.message);
         }
     } else {
-        console.log(`[Emulation]: Скомпилировано (${currentLanguage}). Вывод в DevTools.`);
+        console.log(`[Emulation]: Скомпилировано (${currentLanguage}).`);
     }
-}
+};
 
-// --- UI Navigation ---
+
+// --- AI Code Generator ---
+window.generateAICode = async function() {
+    const provider = document.getElementById('ai-provider').value;
+    const promptText = document.getElementById('ai-prompt').value.trim();
+
+    if (!promptText) {
+        return alert('Введи промпт для генерации кода!');
+    }
+
+    const key = localStorage.getItem(`key_${provider}`);
+    if (!key) {
+        alert(`Сначала добавь API ключ для ${provider.toUpperCase()} в настройках (🔑)`);
+        return toggleSettingsModal();
+    }
+
+    console.log(`[AI Request]: Отправка запроса в ${provider}...`);
+
+    try {
+        if (provider === 'gemini') {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`;
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: `Ты ИИ-кодер в IDE. Напиши чистый код для языка ${currentLanguage} по запросу: ${promptText}. Выдавай только код без лишних пояснений.` }] }]
+                })
+            });
+            const data = await res.json();
+            if (data.candidates && data.candidates[0].content.parts[0].text) {
+                let aiCode = data.candidates[0].content.parts[0].text;
+                aiCode = aiCode.replace(/```[a-z]*\n?/gi, '').replace(/```$/g, '');
+                if (codeEditor) codeEditor.setValue(aiCode);
+                console.log('[AI Success]: Код успешно сгенерирован Gemini!');
+            } else {
+                console.error('[AI Error]:', data);
+            }
+        } else if (provider === 'groq') {
+            const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${key}`
+                },
+                body: JSON.stringify({
+                    model: 'llama-3.3-70b-versatile',
+                    messages: [{ role: 'user', content: `Напиши код на ${currentLanguage}: ${promptText}` }]
+                })
+            });
+            const data = await res.json();
+            if (data.choices && data.choices[0].message) {
+                if (codeEditor) codeEditor.setValue(data.choices[0].message.content);
+            }
+        }
+    } catch (err) {
+        console.error('[AI Exec Error]:', err.message);
+    }
+};
+
+
+// --- UI Navigation Tabs ---
 document.querySelectorAll('.menu-item').forEach(item => {
     item.addEventListener('click', () => {
         document.querySelectorAll('.menu-item').forEach(i => i.classList.remove('active'));
         document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
         item.classList.add('active');
-        document.getElementById(item.dataset.tab).classList.add('active');
+        const target = document.getElementById(item.dataset.tab);
+        if (target) target.classList.add('active');
     });
 });
