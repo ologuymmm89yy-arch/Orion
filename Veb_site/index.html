@@ -9,33 +9,56 @@
 <body>
     <div class="sidebar">
         <h3>BLACK SENSE</h3>
-        <div id="dns-status">DNS Shield: Инициализация...</div>
+        <div id="dns-status">DNS Shield: Active</div>
         <ul id="sidebar-menu">
-            <li class="menu-item active" data-tab="editor" tabindex="0">💻 Код (IDE)</li>
-            <li class="menu-item" data-tab="vm" tabindex="0">🖥️ Эмулятор (v86)</li>
-            <li class="menu-item" data-tab="admin" tabindex="0">⚙️ Админ-панель</li>
+            <li class="menu-item active" data-tab="editor">💻 Код (IDE)</li>
+            <li class="menu-item" data-tab="vm">🖥️ Эмулятор (v86)</li>
+            <li class="menu-item" data-tab="admin">⚙️ Админ-панель</li>
         </ul>
+
+        <button id="btn-settings" onclick="toggleSettingsModal()">🔑 API Keys & Settings</button>
         <button id="btn-devtools" onclick="toggleDevTools()">🛠 DevTools [F12]</button>
     </div>
 
     <div class="main">
-        <!-- Вкладка IDE с файловым деревом -->
+        <!-- Вкладка IDE -->
         <div id="editor" class="tab-content active">
+            <!-- AI Bar -->
+            <div class="ai-bar">
+                <select id="ai-provider">
+                    <option value="gemini">Google Gemini AI</option>
+                    <option value="groq">Groq (Llama 3)</option>
+                    <option value="anthropic">Anthropic (Claude)</option>
+                </select>
+                <input type="text" id="ai-prompt" placeholder="Попросить ИИ написать или отредактировать код...">
+                <button id="btn-ai-generate" onclick="generateAICode()">✨ AI Generate</button>
+            </div>
+
             <div class="ide-container">
+                <!-- Дерево файлов -->
                 <div class="file-tree">
-                    <div class="tree-header">📁 SIGMA_PROJECT</div>
-                    <ul>
-                        <li onclick="openProjectFile('rust', 'core/main.rs', 'rust')">📄 main.rs</li>
-                        <li onclick="openProjectFile('cpp', 'core/native_loader.cpp', 'cpp')">📄 native_loader.cpp</li>
-                        <li onclick="openProjectFile('lua', 'scripts/main.lua', 'lua')">📄 main.lua</li>
-                        <li onclick="openProjectFile('c', 'core/kernel.c', 'c')">📄 kernel.c</li>
-                        <li onclick="openProjectFile('js', 'js/dns_bridge.js', 'javascript')">📄 dns_bridge.js</li>
-                        <li onclick="openProjectFile('app', 'js/app.js', 'javascript')">📄 app.js</li>
+                    <div class="tree-header">
+                        <span>📁 SIGMA_PROJECT</span>
+                        <div class="file-actions">
+                            <button title="Новый файл" onclick="createNewFile()">📄+</button>
+                            <button title="Удалить активный файл" onclick="deleteActiveFile()">🗑️</button>
+                        </div>
+                    </div>
+                    <ul id="file-list-ul">
+                        <!-- Динамически заполняется через JS -->
                     </ul>
                 </div>
+
+                <!-- Рабочая область с Вкладками (Tabs) -->
                 <div class="editor-workspace">
+                    <!-- Панель открытых вкладок -->
+                    <div class="tabs-bar" id="tabs-bar">
+                        <!-- Вкладки заносятся через JS -->
+                    </div>
+
+                    <!-- Панель инструментов редактора -->
                     <div class="editor-toolbar">
-                        <span id="current-file-label">/core/main.rs</span>
+                        <span id="current-file-label">/select_file.rs</span>
                         <div class="toolbar-actions">
                             <select id="language-select" onchange="changeLanguage(this.value)">
                                 <option value="rust">Rust (.rs)</option>
@@ -44,7 +67,7 @@
                                 <option value="c">C (.c)</option>
                                 <option value="javascript">JavaScript (.js)</option>
                             </select>
-                            <button id="btn-run" onclick="runCurrentCode()">▶ Запустить</button>
+                            <button id="btn-run" onclick="runCurrentCode()">▶ Запустить (Ctrl+Enter)</button>
                         </div>
                     </div>
                     <div id="editor-container"></div>
@@ -52,38 +75,58 @@
             </div>
         </div>
 
-        <!-- Вкладка Эмулятора -->
+        <!-- Вкладки Эмулятора и Админки -->
         <div id="vm" class="tab-content">
             <h2>ISO Manager & v86 Engine</h2>
             <input type="file" id="iso-input" accept=".iso">
-            <div id="screen-container">Эмулятор будет выведен здесь...</div>
+            <div id="screen-container">Эмулятор готов к загрузке ISO...</div>
         </div>
 
-        <!-- Вкладка Админки -->
         <div id="admin" class="tab-content">
             <h2>Системная панель</h2>
             <div id="admin-output">Система готова. Ожидание команд...</div>
         </div>
     </div>
 
-    <!-- Встроенный DevTools (Консоль + Сеть) -->
+    <!-- Модалка Настроек API -->
+    <div id="settings-modal" class="modal-hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>🔑 Настройка AI Ключей</h3>
+                <span class="modal-close" onclick="toggleSettingsModal()">✕</span>
+            </div>
+            <div class="modal-body">
+                <label>Google Gemini API Key:</label>
+                <input type="password" id="key-gemini" placeholder="AIzaSy...">
+
+                <label>Anthropic Claude API Key:</label>
+                <input type="password" id="key-anthropic" placeholder="sk-ant-api...">
+
+                <label>Groq API Key:</label>
+                <input type="password" id="key-groq" placeholder="gsk_...">
+
+                <p class="small-text">💡 Ключи хранятся в браузере и не передаются третьим лицам.</p>
+                <button onclick="saveApiKeys()">💾 Сохранить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- DevTools -->
     <div id="devtools-panel" class="devtools-hidden">
         <div class="devtools-header">
             <div class="devtools-tabs">
                 <button class="dt-tab active" onclick="switchDtTab('console')">Console</button>
-                <button class="dt-tab" onclick="switchDtTab('network')">Network (DoH)</button>
+                <button class="dt-tab" onclick="switchDtTab('network')">Network</button>
             </div>
-            <button class="dt-close" onclick="toggleDevTools()">✕ Закрыть [F12]</button>
+            <button class="dt-close" onclick="toggleDevTools()">✕ [F12]</button>
         </div>
-
         <div id="dt-pane-console" class="dt-pane active">
             <div id="devtools-logs"></div>
             <div class="devtools-input-area">
                 <span>&gt;</span>
-                <input type="text" id="devtools-input" placeholder="Введите JS / Lua команду..." onkeydown="handleDevToolsExec(event)">
+                <input type="text" id="devtools-input" placeholder="Введите JS / Lua..." onkeydown="handleDevToolsExec(event)">
             </div>
         </div>
-
         <div id="dt-pane-network" class="dt-pane">
             <div id="network-logs">
                 <div class="net-row net-header"><span>Метод</span><span>URL</span><span>Статус</span></div>
@@ -91,13 +134,8 @@
         </div>
     </div>
 
-    <!-- Monaco Editor -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.min.js"></script>
-    
-    <!-- Движок Lua WASM (Wasmoon) -->
     <script src="https://cdn.jsdelivr.net/npm/wasmoon@1.16.0/dist/index.js"></script>
-
-    <!-- Локальные скрипты -->
     <script src="js/dns_bridge.js"></script>
     <script src="js/admin_panel.js"></script>
     <script src="js/app.js"></script>
