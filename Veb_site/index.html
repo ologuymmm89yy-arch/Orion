@@ -60,10 +60,34 @@
                         <option value="netinstall">Загрузить через меню</option>
                     </select>
                     <input type="file" id="iso-input" accept=".iso,.img">
-                    <button onclick="loadSelectedIso()">Запустить</button>
+                    <select id="emulator-mode-select" onchange="changeEmulatorMode(this.value)">
+                        <option value="both" selected>⚡ GUI + TTY Консоль</option>
+                        <option value="gui">🖥️ Только Графика (GUI)</option>
+                        <option value="cli">💻 Только Консоль (Serial TTY)</option>
+                    </select>
+                    <button onclick="loadSelectedIso()">▶ Запустить</button>
                 </div>
-                <div id="screen-container" class="emulator-screen">
-                    <div class="screen-placeholder">Выберите ISO файл выше для запуска эмулятора...</div>
+
+                <!-- Быстрая панель команд для ISO -->
+                <div class="quick-commands-bar">
+                    <span class="cmd-label">🚀 Команды:</span>
+                    <button class="cmd-btn" onclick="sendSerialCmd('pacman -Syu --noconfirm git python gcc neofetch')">📦 Установить софт</button>
+                    <button class="cmd-btn" onclick="sendSerialCmd('dhcpcd &')">🌐 Включить сеть</button>
+                    <button class="cmd-btn" onclick="sendSerialCmd('neofetch')">📊 Neofetch</button>
+                    <div class="cmd-custom">
+                        <input type="text" id="custom-serial-input" placeholder="Команда для отправки в систему..." onkeypress="if(event.key==='Enter') sendCustomSerialCmd()">
+                        <button onclick="sendCustomSerialCmd()">Отправить ↵</button>
+                    </div>
+                </div>
+
+                <!-- Дисплей и терминал -->
+                <div class="emulator-view-container mode-both" id="emulator-view">
+                    <div id="screen-container" class="emulator-screen">
+                        <div class="screen-placeholder">Выберите ISO файл выше для запуска эмулятора...</div>
+                    </div>
+                    <div id="serial-container" class="emulator-serial">
+                        <pre class="serial-placeholder">Текстовая консоль (Serial TTY) готова к выходу данных...</pre>
+                    </div>
                 </div>
             </div>
 
@@ -140,7 +164,6 @@
         </div>
     </div>
 
-    <!-- Подключение JS -->
     <script src="js/app.js"></script>
 </body>
 </html>
