@@ -234,9 +234,7 @@ body, html {
     margin-bottom: 8px;
 }
 
-#file-list-ul {
-    list-style: none;
-}
+#file-list-ul { list-style: none; }
 
 #file-list-ul li {
     padding: 6px;
@@ -245,9 +243,7 @@ body, html {
     border-radius: 4px;
 }
 
-#file-list-ul li:hover {
-    background-color: var(--bg-card);
-}
+#file-list-ul li:hover { background-color: var(--bg-card); }
 
 #editor-container {
     flex: 1;
@@ -255,38 +251,123 @@ body, html {
 }
 
 /* ==========================================
-   ЭМУЛЯТОР С ЭКРАНОМ
+   ЭМУЛЯТОР & КОНСОЛЬ V86
    ========================================== */
 .emulator-controls {
-    padding: 12px 15px;
+    padding: 10px 15px;
     background-color: var(--bg-sidebar);
     border-bottom: 1px solid var(--border);
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
+    flex-wrap: wrap;
 }
 
 .emulator-controls select, .emulator-controls input {
     background-color: var(--bg-card);
     color: var(--text-primary);
     border: 1px solid var(--border);
-    padding: 6px;
+    padding: 6px 10px;
     border-radius: 4px;
     font-size: 12px;
 }
 
-.emulator-screen {
-    flex: 1;
-    background: #000;
+.quick-commands-bar {
+    background-color: var(--bg-main);
+    border-bottom: 1px solid var(--border);
+    padding: 6px 12px;
     display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.cmd-label {
+    font-size: 12px;
+    color: var(--accent);
+    font-weight: bold;
+}
+
+.cmd-btn {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.cmd-btn:hover {
+    background-color: var(--accent);
+    color: #fff;
+}
+
+.cmd-custom {
+    margin-left: auto;
+    display: flex;
+    gap: 4px;
+}
+
+.cmd-custom input {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    width: 220px;
+}
+
+.cmd-custom button {
+    background-color: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    cursor: pointer;
+}
+
+.emulator-view-container {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+    background: #000;
+}
+
+.emulator-view-container.mode-gui #screen-container { display: flex; flex: 1; }
+.emulator-view-container.mode-gui #serial-container { display: none; }
+
+.emulator-view-container.mode-cli #screen-container { display: none; }
+.emulator-view-container.mode-cli #serial-container { display: flex; flex: 1; }
+
+.emulator-view-container.mode-both #screen-container { flex: 1; display: flex; border-right: 1px solid var(--border); }
+.emulator-view-container.mode-both #serial-container { flex: 1; display: flex; }
+
+.emulator-screen {
+    background: #000;
     align-items: center;
     justify-content: center;
     overflow: hidden;
 }
 
-.screen-placeholder {
+.emulator-serial {
+    background: #050811;
+    padding: 10px;
+    overflow-y: auto;
+    color: #4ade80;
+    font-family: 'Consolas', monospace;
+    font-size: 13px;
+    white-space: pre-wrap;
+    word-break: break-all;
+    flex-direction: column;
+}
+
+.screen-placeholder, .serial-placeholder {
     color: var(--text-muted);
-    font-size: 14px;
+    font-size: 13px;
 }
 
 /* ==========================================
