@@ -23,7 +23,7 @@ function getSafeFiles() {
         }
         return parsed;
     } catch (e) {
-        console.warn("[FS]: Данные повреждены или отсутствуют. Автоматический сброс...");
+        console.warn("[FS]: Данные повреждены. Автоматический сброс к начальным файлам...");
         localStorage.removeItem('black_sense_files');
         return JSON.parse(JSON.stringify(DEFAULT_FILES));
     }
@@ -45,10 +45,30 @@ window.hardReset = function() {
 };
 
 // ==========================================
-// 2. ИНИЦИАЛИЗАЦИЯ И ИНТЕРФЕЙС
+// 2. СИСТЕМА СМЕНЫ ТЕМ И ОФОРМЛЕНИЯ
+// ==========================================
+window.changeAppTheme = function(themeName) {
+    document.body.setAttribute('data-theme', themeName);
+    localStorage.setItem('black_sense_theme', themeName);
+
+    if (codeEditor) {
+        const monacoTheme = themeName === 'light' ? 'vs' : 'vs-dark';
+        monaco.editor.setTheme(monacoTheme);
+    }
+};
+
+// ==========================================
+// 3. ИНИЦИАЛИЗАЦИЯ И ИНТЕРФЕЙС
 // ==========================================
 function startIDE() {
-    console.log("[BLACK SENSE]: Инициализация системы...");
+    console.log("[BLACK SENSE]: Инициализация IDE...");
+
+    // Восстановление сохраненной темы
+    const savedTheme = localStorage.getItem('black_sense_theme') || 'cyberpunk';
+    changeAppTheme(savedTheme);
+    const themeSelect = document.getElementById('theme-select');
+    if (themeSelect) themeSelect.value = savedTheme;
+
     renderFileTree();
     renderTabs();
 
@@ -69,10 +89,11 @@ function startIDE() {
         require(['vs/editor/editor.main'], function() {
             const container = document.getElementById('editor-container');
             if (container) {
+                const monacoTheme = savedTheme === 'light' ? 'vs' : 'vs-dark';
                 codeEditor = monaco.editor.create(container, {
                     value: files[activeFile] ? files[activeFile].content : '',
                     language: files[activeFile] ? files[activeFile].lang : 'plaintext',
-                    theme: 'vs-dark',
+                    theme: monacoTheme,
                     automaticLayout: true,
                     fontSize: 14,
                     minimap: { enabled: true }
@@ -93,7 +114,7 @@ function startIDE() {
         });
     }
 
-    // Обработчик загрузки ISO
+    // Загрузка и запуск ISO в v86
     const isoInput = document.getElementById('iso-input');
     if (isoInput) {
         isoInput.addEventListener('change', function(e) {
@@ -109,17 +130,18 @@ function startIDE() {
                     const buffer = event.target.result;
                     screenContainer.innerHTML = ''; 
                     try {
+                        // Используем jsDelivr CDN для предотвращения CORS блокировок
                         window.v86_emulator = new V86({
                             wasm_path: "https://cdn.jsdelivr.net/npm/v86@latest/build/v86.wasm",
                             screen_container: screenContainer,
-                            bios: { url: "https://unpkg.com/v86@latest/bios/seabios.bin" },
-                            vga_bios: { url: "https://unpkg.com/v86@latest/bios/vgabios.bin" },
+                            bios: { url: "https://cdn.jsdelivr.net/npm/v86@latest/bios/seabios.bin" },
+                            vga_bios: { url: "https://cdn.jsdelivr.net/npm/v86@latest/bios/vgabios.bin" },
                             cdrom: { buffer: buffer },
                             autostart: true,
                             memory_size: 512 * 1024 * 1024,
                             vga_memory_size: 8 * 1024 * 1024
                         });
-                        console.log("[v86]: Образ запущен:", file.name);
+                        console.log("[v86]: Образ успешно запущен:", file.name);
                     } catch (err) {
                         console.error("[v86 Error]:", err.message);
                     }
@@ -130,7 +152,7 @@ function startIDE() {
     }
 }
 
-// Мгновенный запуск без задержки DOM
+// Запуск приложения без зависимостей от задержек DOM
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', startIDE);
 } else {
@@ -138,7 +160,7 @@ if (document.readyState === 'loading') {
 }
 
 // ==========================================
-// 3. УПРАВЛЕНИЕ ФАЙЛАМИ И ВКЛАДКАМИ
+// 4. УПРАВЛЕНИЕ ФАЙЛАМИ И ВКЛАДКАМИ
 // ==========================================
 function renderTabs() {
     const tabsBar = document.getElementById('tabs-bar');
@@ -256,7 +278,7 @@ window.changeLanguage = function(lang) {
 };
 
 // ==========================================
-// 4. AI ГЕНЕРАТОР & ЗАПУСК КОДА
+// 5. AI ГЕНЕРАТОР И ИНТЕГРАЦИЯ ИИ
 // ==========================================
 window.generateAICode = async function() {
     const provider = document.getElementById('ai-provider').value;
@@ -265,7 +287,7 @@ window.generateAICode = async function() {
 
     const key = localStorage.getItem(`key_${provider}`);
     if (!key) {
-        alert(`Добавь API ключ для ${provider.toUpperCase()} в настройках (🔑)`);
+        alert(`Добавь API ключ для ${provider.toUpperCase()} в настройках (⚙️)`);
         return toggleSettingsModal();
     }
 
@@ -311,12 +333,12 @@ window.runCurrentCode = async function() {
         try { eval(code); } 
         catch (e) { console.error('[JS Error]:', e.message); }
     } else {
-        console.log(`[Emulation]: Скомпилировано (${currentLanguage}). Для прямого выполнения требуется серверный компилятор.`);
+        console.log(`[Emulation]: Скомпилировано (${currentLanguage}). Для виртуализации используйте вкладу ISO.`);
     }
 };
 
 // ==========================================
-// 5. ГЛОБАЛЬНЫЕ ОКНА И DEVTOOLS
+// 6. DEVTOOLS И МОДАЛЬНЫЕ ОКНА
 // ==========================================
 window.toggleSettingsModal = function() {
     const modal = document.getElementById('settings-modal');
@@ -355,6 +377,7 @@ window.switchDtTab = function(tabName) {
     }
 };
 
+// Перехват логов в DevTools Консоль
 (function() {
     const oldLog = console.log;
     const oldError = console.error;
