@@ -120,29 +120,4 @@
     </div>
 
     <div id="devtools-panel" class="devtools-hidden">
-        <div class="devtools-header">
-            <div class="devtools-tabs">
-                <button class="dt-tab active" onclick="switchDtTab('console')">Console</button>
-                <button class="dt-tab" onclick="switchDtTab('network')">Network</button>
-            </div>
-            <button class="dt-close" onclick="toggleDevTools()">✕ [F12]</button>
-        </div>
-        <div id="dt-pane-console" class="dt-pane active">
-            <div id="devtools-logs"></div>
-            <div class="devtools-input-area">
-                <span>&gt;</span>
-                <input type="text" id="devtools-input" placeholder="Введите команду или JS..." onkeydown="handleDevToolsExec(event)">
-            </div>
-        </div>
-        <div id="dt-pane-network" class="dt-pane">
-            <div id="network-logs">
-                <div class="net-row net-header"><span>Метод</span><span>URL</span><span>Статус</span></div>
-            </div>
-        </div>
-    </div>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/wasmoon@1.16.0/dist/index.js"></script>
-    <script src="js/app.js"></script>
-</body>
-</html>
+        <div class="devtools
