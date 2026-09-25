@@ -1,4 +1,60 @@
-// --- Глобальные обработчики для интерфейса (чтобы кнопки работали сразу) ---
+// --- Перехват консоли для DevTools ---
+(function() {
+    const oldLog = console.log;
+    const oldError = console.error;
+    const logsContainer = document.getElementById('devtools-logs');
+
+    function appendLog(type, args) {
+        if (!logsContainer) return;
+        const div = document.createElement('div');
+        div.style.color = type === 'error' ? '#ef4444' : '#cbd5e1';
+        div.innerText = `[${type.toUpperCase()}]: ` + Array.from(args).map(arg => 
+            typeof arg === 'object' ? JSON.stringify(arg) : arg
+        ).join(' ');
+        logsContainer.appendChild(div);
+        logsContainer.scrollTop = logsContainer.scrollHeight;
+    }
+
+    console.log = function(...args) {
+        oldLog.apply(console, args);
+        appendLog('log', args);
+    };
+
+    console.error = function(...args) {
+        oldError.apply(console, args);
+        appendLog('error', args);
+    };
+})();
+
+// --- Перехват Network запросов ---
+const originalFetch = window.fetch;
+window.fetch = async function(...args) {
+    const url = args[0];
+    const method = (args[1] && args[1].method) || 'GET';
+    const networkLogs = document.getElementById('network-logs');
+    const rowId = 'net-' + Date.now();
+    
+    if (networkLogs) {
+        networkLogs.innerHTML += `<div class="net-row" id="${rowId}"><span>${method}</span> <span style="color: #38bdf8; overflow:hidden; text-overflow:ellipsis;">${url}</span> <span>Pending...</span></div>`;
+    }
+
+    try {
+        const response = await originalFetch.apply(this, args);
+        if (networkLogs) {
+            const row = document.getElementById(rowId);
+            if (row) row.innerHTML = `<span>${method}</span> <span style="color: #38bdf8;">${url}</span> <span style="color: #16a34a;">${response.status} OK</span>`;
+        }
+        return response;
+    } catch (error) {
+        if (networkLogs) {
+            const row = document.getElementById(rowId);
+            if (row) row.innerHTML = `<span>${method}</span> <span style="color: #38bdf8;">${url}</span> <span style="color: #ef4444;">Failed</span>`;
+        }
+        throw error;
+    }
+};
+
+// --- Глобальные функции интерфейса ---
 window.toggleSettingsModal = function() {
     const modal = document.getElementById('settings-modal');
     if (modal) {
@@ -32,7 +88,7 @@ window.saveApiKeys = function() {
     localStorage.setItem('key_gemini', document.getElementById('key-gemini').value.trim());
     localStorage.setItem('key_anthropic', document.getElementById('key-anthropic').value.trim());
     localStorage.setItem('key_groq', document.getElementById('key-groq').value.trim());
-    alert('✅ API ключи сохранены в localStorage!');
+    alert('✅ API ключи сохранены!');
     toggleSettingsModal();
 };
 
@@ -53,6 +109,62 @@ window.handleDevToolsExec = function(event) {
     }
 };
 
+// --- v86 Emulator Logic ---
+window.handleIsoSourceChange = function(val) {
+    const fileInput = document.getElementById('iso-input');
+    if (val === 'custom') {
+        fileInput.style.display = 'inline-block';
+        fileInput.click();
+    } else {
+        fileInput.style.display = 'none';
+    }
+};
+
+window.loadSelectedIso = function() {
+    const source = document.getElementById('iso-source-select').value;
+    const env = document.getElementById('desktop-env-select').value;
+    if (source === 'netinstall') {
+        alert(`Выбран режим: BlackArch Netinstall (815MB) с окружением: ${env}. Пожалуйста, выберите скачанный ISO файл через пункт «Загрузить свой .iso файл» для мгновенной загрузки в v86.`);
+        document.getElementById('iso-source-select').value = 'custom';
+        document.getElementById('iso-input').style.display = 'inline-block';
+        document.getElementById('iso-input').click();
+    }
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+    const isoInput = document.getElementById('iso-input');
+    if (isoInput) {
+        isoInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const screenContainer = document.getElementById('screen-container');
+            screenContainer.innerHTML = `<div style="padding: 20px; color: #38bdf8; text-align: center;">Загрузка ISO (${(file.size / (1024*1024)).toFixed(1)} MB) в память v86...</div>`;
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const buffer = event.target.result;
+                screenContainer.innerHTML = ''; 
+
+                try {
+                    window.v86_emulator = new V86({
+                        screen_container: screenContainer,
+                        bios: { url: "https://unpkg.com/v86@latest/bios/seabios.bin" },
+                        vga_bios: { url: "https://unpkg.com/v86@latest/bios/vgabios.bin" },
+                        cdrom: { buffer: buffer },
+                        autostart: true,
+                        memory_size: 512 * 1024 * 1024,
+                        vga_memory_size: 8 * 1024 * 1024
+                    });
+                    console.log("[v86]: Запущен образ:", file.name);
+                } catch (err) {
+                    console.error("[v86 Error]:", err.message);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        });
+    }
+});
 
 // --- Virtual File System & State ---
 let files = JSON.parse(localStorage.getItem('black_sense_files')) || {
@@ -72,13 +184,12 @@ function saveFileSystem() {
     localStorage.setItem('black_sense_files', JSON.stringify(files));
 }
 
-
 // --- Monaco Editor Initialization ---
 require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' }});
 
 require(['vs/editor/editor.main'], function() {
     codeEditor = monaco.editor.create(document.getElementById('editor-container'), {
-        value: files[activeFile] ? files[activeFile].content : '// Выберите файл',
+        value: files[activeFile] ? files[activeFile].content : '',
         language: files[activeFile] ? files[activeFile].lang : 'plaintext',
         theme: 'vs-dark',
         automaticLayout: true,
@@ -106,8 +217,7 @@ require(['vs/editor/editor.main'], function() {
     renderTabs();
 });
 
-
-// --- Tab Management System ---
+// --- Tab Management ---
 function renderTabs() {
     const tabsBar = document.getElementById('tabs-bar');
     if (!tabsBar) return;
@@ -169,7 +279,6 @@ function closeTab(filepath) {
     renderTabs();
 }
 
-
 // --- File Tree & CRUD ---
 function renderFileTree() {
     const ul = document.getElementById('file-list-ul');
@@ -191,7 +300,6 @@ function renderFileTree() {
 window.createNewFile = function() {
     const filename = prompt('Введите путь нового файла (например: scripts/test.lua):');
     if (!filename) return;
-
     if (files[filename]) return alert('Файл уже существует!');
 
     let lang = 'javascript';
@@ -226,7 +334,6 @@ window.changeLanguage = function(lang) {
     }
 };
 
-
 // --- Runner Engine ---
 window.runCurrentCode = async function() {
     if (!codeEditor) return;
@@ -254,24 +361,19 @@ window.runCurrentCode = async function() {
     }
 };
 
-
-// --- AI Code Generator ---
+// --- AI Generator ---
 window.generateAICode = async function() {
     const provider = document.getElementById('ai-provider').value;
     const promptText = document.getElementById('ai-prompt').value.trim();
-
-    if (!promptText) {
-        return alert('Введи промпт для генерации кода!');
-    }
+    if (!promptText) return alert('Введи промпт для генерации кода!');
 
     const key = localStorage.getItem(`key_${provider}`);
     if (!key) {
-        alert(`Сначала добавь API ключ для ${provider.toUpperCase()} в настройках (🔑)`);
+        alert(`Добавь API ключ для ${provider.toUpperCase()} в настройках (🔑)`);
         return toggleSettingsModal();
     }
 
-    console.log(`[AI Request]: Отправка запроса в ${provider}...`);
-
+    console.log(`[AI Request]: Отправка в ${provider}...`);
     try {
         if (provider === 'gemini') {
             const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`;
@@ -279,42 +381,22 @@ window.generateAICode = async function() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    contents: [{ parts: [{ text: `Ты ИИ-кодер в IDE. Напиши чистый код для языка ${currentLanguage} по запросу: ${promptText}. Выдавай только код без лишних пояснений.` }] }]
+                    contents: [{ parts: [{ text: `Напиши чистый код для языка ${currentLanguage} по запросу: ${promptText}. Только код.` }] }]
                 })
             });
             const data = await res.json();
             if (data.candidates && data.candidates[0].content.parts[0].text) {
-                let aiCode = data.candidates[0].content.parts[0].text;
-                aiCode = aiCode.replace(/```[a-z]*\n?/gi, '').replace(/```$/g, '');
+                let aiCode = data.candidates[0].content.parts[0].text.replace(/```[a-z]*\n?/gi, '').replace(/```$/g, '');
                 if (codeEditor) codeEditor.setValue(aiCode);
-                console.log('[AI Success]: Код успешно сгенерирован Gemini!');
-            } else {
-                console.error('[AI Error]:', data);
-            }
-        } else if (provider === 'groq') {
-            const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${key}`
-                },
-                body: JSON.stringify({
-                    model: 'llama-3.3-70b-versatile',
-                    messages: [{ role: 'user', content: `Напиши код на ${currentLanguage}: ${promptText}` }]
-                })
-            });
-            const data = await res.json();
-            if (data.choices && data.choices[0].message) {
-                if (codeEditor) codeEditor.setValue(data.choices[0].message.content);
+                console.log('[AI Success]: Код успешно сгенерирован!');
             }
         }
     } catch (err) {
-        console.error('[AI Exec Error]:', err.message);
+        console.error('[AI Error]:', err.message);
     }
 };
 
-
-// --- UI Navigation Tabs ---
+// --- Sidebar Navigation ---
 document.querySelectorAll('.menu-item').forEach(item => {
     item.addEventListener('click', () => {
         document.querySelectorAll('.menu-item').forEach(i => i.classList.remove('active'));
