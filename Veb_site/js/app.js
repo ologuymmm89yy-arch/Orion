@@ -1,5 +1,5 @@
 // ==========================================
-// 1. СИСТЕМА ВОССТАНОВЛЕНИЯ ФАЙЛОВ (FACTORY RESET)
+// 1. СИСТЕМА ВОССТАНОВЛЕНИЯ ФАЙЛОВ
 // ==========================================
 const DEFAULT_FILES = {
     'core/main.rs': { lang: 'rust', content: '// Core Runtime Component\nfn main() {\n    println!("System online.");\n}' },
@@ -23,7 +23,7 @@ function getSafeFiles() {
         }
         return parsed;
     } catch (e) {
-        console.warn("[FS]: Данные повреждены. Автоматический сброс к начальным файлам...");
+        console.warn("[FS]: Данные повреждены. Автоматический сброс...");
         localStorage.removeItem('black_sense_files');
         return JSON.parse(JSON.stringify(DEFAULT_FILES));
     }
@@ -39,13 +39,8 @@ function saveFileSystem() {
     localStorage.setItem('black_sense_files', JSON.stringify(files));
 }
 
-window.hardReset = function() {
-    localStorage.clear();
-    location.reload();
-};
-
 // ==========================================
-// 2. СИСТЕМА СМЕНЫ ТЕМ И ОФОРМЛЕНИЯ
+// 2. СИСТЕМА ТЕМ И ЭМУЛЯТОРА
 // ==========================================
 window.changeAppTheme = function(themeName) {
     document.body.setAttribute('data-theme', themeName);
@@ -57,13 +52,36 @@ window.changeAppTheme = function(themeName) {
     }
 };
 
+window.changeEmulatorMode = function(mode) {
+    const container = document.getElementById('emulator-view');
+    if (container) {
+        container.className = 'emulator-view-container mode-' + mode;
+    }
+};
+
+window.sendSerialCmd = function(cmd) {
+    if (window.v86_emulator && typeof window.v86_emulator.serial0_send === 'function') {
+        window.v86_emulator.serial0_send(cmd + "\n");
+        console.log(`[v86 TTY Sent]: ${cmd}`);
+    } else {
+        alert('Эмулятор еще не запущен! Запустите ISO файл.');
+    }
+};
+
+window.sendCustomSerialCmd = function() {
+    const input = document.getElementById('custom-serial-input');
+    if (input && input.value) {
+        sendSerialCmd(input.value);
+        input.value = '';
+    }
+};
+
 // ==========================================
-// 3. ИНИЦИАЛИЗАЦИЯ И ИНТЕРФЕЙС
+// 3. ИНИЦИАЛИЗАЦИЯ
 // ==========================================
 function startIDE() {
     console.log("[BLACK SENSE]: Инициализация IDE...");
 
-    // Восстановление сохраненной темы
     const savedTheme = localStorage.getItem('black_sense_theme') || 'cyberpunk';
     changeAppTheme(savedTheme);
     const themeSelect = document.getElementById('theme-select');
@@ -72,7 +90,7 @@ function startIDE() {
     renderFileTree();
     renderTabs();
 
-    // Навигация бокового меню
+    // Боковое меню
     document.querySelectorAll('.menu-item').forEach(item => {
         item.addEventListener('click', () => {
             document.querySelectorAll('.menu-item').forEach(i => i.classList.remove('active'));
@@ -114,7 +132,7 @@ function startIDE() {
         });
     }
 
-    // Загрузка и запуск ISO в v86
+    // Обработчик загрузки ISO с поддержкой Serial TTY
     const isoInput = document.getElementById('iso-input');
     if (isoInput) {
         isoInput.addEventListener('change', function(e) {
@@ -122,18 +140,21 @@ function startIDE() {
             if (!file) return;
 
             const screenContainer = document.getElementById('screen-container');
+            const serialContainer = document.getElementById('serial-container');
+
             if (screenContainer) {
-                screenContainer.innerHTML = `<div style="padding: 20px; color: #38bdf8; text-align: center;">Загрузка ISO (${(file.size / (1024*1024)).toFixed(1)} MB) в память...</div>`;
+                screenContainer.innerHTML = `<div style="padding: 20px; color: #38bdf8; text-align: center;">Загрузка ISO (${(file.size / (1024*1024)).toFixed(1)} MB)...</div>`;
+                if (serialContainer) serialContainer.innerText = '';
 
                 const reader = new FileReader();
                 reader.onload = function(event) {
                     const buffer = event.target.result;
                     screenContainer.innerHTML = ''; 
                     try {
-                        // Используем jsDelivr CDN для предотвращения CORS блокировок
                         window.v86_emulator = new V86({
                             wasm_path: "https://cdn.jsdelivr.net/npm/v86@latest/build/v86.wasm",
                             screen_container: screenContainer,
+                            serial_container: serialContainer,
                             bios: { url: "https://cdn.jsdelivr.net/npm/v86@latest/bios/seabios.bin" },
                             vga_bios: { url: "https://cdn.jsdelivr.net/npm/v86@latest/bios/vgabios.bin" },
                             cdrom: { buffer: buffer },
@@ -152,7 +173,6 @@ function startIDE() {
     }
 }
 
-// Запуск приложения без зависимостей от задержек DOM
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', startIDE);
 } else {
@@ -278,7 +298,7 @@ window.changeLanguage = function(lang) {
 };
 
 // ==========================================
-// 5. AI ГЕНЕРАТОР И ИНТЕГРАЦИЯ ИИ
+// 5. AI ГЕНЕРАТОР & DEVTOOLS
 // ==========================================
 window.generateAICode = async function() {
     const provider = document.getElementById('ai-provider').value;
@@ -292,11 +312,10 @@ window.generateAICode = async function() {
     }
 
     if (!activeFile || !files[activeFile]) {
-        alert('Выберите или создайте файл для вставки кода!');
+        alert('Выберите или создайте файл!');
         return;
     }
 
-    console.log(`[AI Request]: Отправка в ${provider}...`);
     try {
         if (provider === 'gemini') {
             const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`;
@@ -304,7 +323,7 @@ window.generateAICode = async function() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    contents: [{ parts: [{ text: `Напиши чистый код для языка ${currentLanguage} по запросу: ${promptText}. Выдавай ТОЛЬКО код без Markdown.` }] }]
+                    contents: [{ parts: [{ text: `Напиши чистый код для языка ${currentLanguage}: ${promptText}. Без Markdown.` }] }]
                 })
             });
             const data = await res.json();
@@ -313,10 +332,6 @@ window.generateAICode = async function() {
                 if (codeEditor) codeEditor.setValue(aiCode);
                 files[activeFile].content = aiCode;
                 saveFileSystem();
-                console.log('[AI Success]: Код успешно сгенерирован!');
-            } else if (data.error) {
-                console.error('[AI Error]:', data.error.message);
-                alert('Ошибка API: ' + data.error.message);
             }
         }
     } catch (err) {
@@ -327,19 +342,12 @@ window.generateAICode = async function() {
 window.runCurrentCode = async function() {
     if (!codeEditor) return;
     const code = codeEditor.getValue();
-    console.log(`[Runner]: Запуск (${currentLanguage})...`);
-
     if (currentLanguage === 'javascript') {
         try { eval(code); } 
         catch (e) { console.error('[JS Error]:', e.message); }
-    } else {
-        console.log(`[Emulation]: Скомпилировано (${currentLanguage}). Для виртуализации используйте вкладу ISO.`);
     }
 };
 
-// ==========================================
-// 6. DEVTOOLS И МОДАЛЬНЫЕ ОКНА
-// ==========================================
 window.toggleSettingsModal = function() {
     const modal = document.getElementById('settings-modal');
     if (modal) {
@@ -377,7 +385,6 @@ window.switchDtTab = function(tabName) {
     }
 };
 
-// Перехват логов в DevTools Консоль
 (function() {
     const oldLog = console.log;
     const oldError = console.error;
@@ -429,14 +436,6 @@ window.handleIsoSourceChange = function(val) {
 };
 
 window.loadSelectedIso = function() {
-    const source = document.getElementById('iso-source-select').value;
-    if (source === 'netinstall') {
-        alert('Выберите скачанный .iso файл через меню для загрузки.');
-        document.getElementById('iso-source-select').value = 'custom';
-        const fileInput = document.getElementById('iso-input');
-        if (fileInput) {
-            fileInput.style.display = 'inline-block';
-            fileInput.click();
-        }
-    }
+    const fileInput = document.getElementById('iso-input');
+    if (fileInput) fileInput.click();
 };
