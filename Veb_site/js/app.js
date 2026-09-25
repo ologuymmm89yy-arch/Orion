@@ -109,7 +109,7 @@ window.handleDevToolsExec = function(event) {
     }
 };
 
-// --- v86 Emulator Logic (Явный путь к v86.wasm) ---
+// --- v86 Emulator Logic ---
 window.handleIsoSourceChange = function(val) {
     const fileInput = document.getElementById('iso-input');
     if (val === 'custom') {
@@ -131,45 +131,8 @@ window.loadSelectedIso = function() {
     }
 };
 
-document.addEventListener('DOMContentLoaded', () => {
-    const isoInput = document.getElementById('iso-input');
-    if (isoInput) {
-        isoInput.addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            const screenContainer = document.getElementById('screen-container');
-            screenContainer.innerHTML = `<div style="padding: 20px; color: #38bdf8; text-align: center;">Загрузка ISO (${(file.size / (1024*1024)).toFixed(1)} MB) в память v86...</div>`;
-
-            const reader = new FileReader();
-            reader.onload = function(event) {
-                const buffer = event.target.result;
-                screenContainer.innerHTML = ''; 
-
-                try {
-                    window.v86_emulator = new V86({
-                        // Указываем явную ссылку на v86.wasm в CDN
-                        wasm_path: "https://cdn.jsdelivr.net/npm/v86@latest/build/v86.wasm",
-                        screen_container: screenContainer,
-                        bios: { url: "https://unpkg.com/v86@latest/bios/seabios.bin" },
-                        vga_bios: { url: "https://unpkg.com/v86@latest/bios/vgabios.bin" },
-                        cdrom: { buffer: buffer },
-                        autostart: true,
-                        memory_size: 512 * 1024 * 1024,
-                        vga_memory_size: 8 * 1024 * 1024
-                    });
-                    console.log("[v86]: Успешный запуск образа:", file.name);
-                } catch (err) {
-                    console.error("[v86 Error]:", err.message);
-                }
-            };
-            reader.readAsArrayBuffer(file);
-        });
-    }
-});
-
-// --- Virtual File System & State ---
-let files = JSON.parse(localStorage.getItem('black_sense_files')) || {
+// --- Инициализация файловой системы с защитой от пустого хранилища ---
+const DEFAULT_FILES = {
     'core/main.rs': { lang: 'rust', content: '// Core Runtime Component\nfn main() {\n    println!("System online.");\n}' },
     'core/native_loader.cpp': { lang: 'cpp', content: '#include <iostream>\nint main() {\n    std::cout << "Native loader initialized.\\n";\n    return 0;\n}' },
     'scripts/main.lua': { lang: 'lua', content: 'print("Lua Runtime Executed Successfully!")' },
@@ -177,9 +140,20 @@ let files = JSON.parse(localStorage.getItem('black_sense_files')) || {
     'js/dns_bridge.js': { lang: 'javascript', content: 'console.log("DNS Bridge Ready.");' }
 };
 
-let openTabs = ['core/main.rs'];
-let activeFile = 'core/main.rs';
-let currentLanguage = 'rust';
+function getSavedFiles() {
+    try {
+        const saved = JSON.parse(localStorage.getItem('black_sense_files'));
+        if (saved && Object.keys(saved).length > 0) {
+            return saved;
+        }
+    } catch (e) {}
+    return { ...DEFAULT_FILES };
+}
+
+let files = getSavedFiles();
+let openTabs = Object.keys(files).length > 0 ? [Object.keys(files)[0]] : ['core/main.rs'];
+let activeFile = openTabs[0];
+let currentLanguage = files[activeFile] ? files[activeFile].lang : 'rust';
 let codeEditor = null;
 
 function saveFileSystem() {
@@ -190,9 +164,12 @@ function saveFileSystem() {
 require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' }});
 
 require(['vs/editor/editor.main'], function() {
+    const initialContent = files[activeFile] ? files[activeFile].content : '';
+    const initialLang = files[activeFile] ? files[activeFile].lang : 'plaintext';
+
     codeEditor = monaco.editor.create(document.getElementById('editor-container'), {
-        value: files[activeFile] ? files[activeFile].content : '',
-        language: files[activeFile] ? files[activeFile].lang : 'plaintext',
+        value: initialContent,
+        language: initialLang,
         theme: 'vs-dark',
         automaticLayout: true,
         fontSize: 14,
@@ -311,7 +288,7 @@ window.createNewFile = function() {
     if (filename.endsWith('.c')) lang = 'c';
 
     files[filename] = { lang: lang, content: '// Новый файл\n' };
-    openTabs.push(filename);
+    if (!openTabs.includes(filename)) openTabs.push(filename);
     saveFileSystem();
     switchFile(filename);
     renderFileTree();
@@ -375,6 +352,14 @@ window.generateAICode = async function() {
         return toggleSettingsModal();
     }
 
+    // Если нет открытого файла, создаем main.rs по умолчанию
+    if (!activeFile || !files[activeFile]) {
+        activeFile = 'core/main.rs';
+        files[activeFile] = { lang: 'rust', content: '' };
+        if (!openTabs.includes(activeFile)) openTabs.push(activeFile);
+        switchFile(activeFile);
+    }
+
     console.log(`[AI Request]: Отправка в ${provider}...`);
     try {
         if (provider === 'gemini') {
@@ -383,14 +368,19 @@ window.generateAICode = async function() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    contents: [{ parts: [{ text: `Напиши чистый код для языка ${currentLanguage} по запросу: ${promptText}. Только код.` }] }]
+                    contents: [{ parts: [{ text: `Напиши чистый код для языка ${currentLanguage} по запросу: ${promptText}. Выдавай ТОЛЬКО код.` }] }]
                 })
             });
             const data = await res.json();
             if (data.candidates && data.candidates[0].content.parts[0].text) {
                 let aiCode = data.candidates[0].content.parts[0].text.replace(/```[a-z]*\n?/gi, '').replace(/```$/g, '');
                 if (codeEditor) codeEditor.setValue(aiCode);
+                files[activeFile].content = aiCode;
+                saveFileSystem();
                 console.log('[AI Success]: Код успешно сгенерирован!');
+            } else if (data.error) {
+                console.error('[AI Error]:', data.error.message);
+                alert('Ошибка API: ' + data.error.message);
             }
         }
     } catch (err) {
@@ -398,13 +388,55 @@ window.generateAICode = async function() {
     }
 };
 
-// --- Sidebar Navigation ---
-document.querySelectorAll('.menu-item').forEach(item => {
-    item.addEventListener('click', () => {
-        document.querySelectorAll('.menu-item').forEach(i => i.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-        item.classList.add('active');
-        const target = document.getElementById(item.dataset.tab);
-        if (target) target.classList.add('active');
+// --- DOM Loaded Setup ---
+document.addEventListener('DOMContentLoaded', () => {
+    // Рендерим дерево файлов сразу при загрузке DOM
+    renderFileTree();
+    renderTabs();
+
+    // Обработчик ISO файлов
+    const isoInput = document.getElementById('iso-input');
+    if (isoInput) {
+        isoInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const screenContainer = document.getElementById('screen-container');
+            screenContainer.innerHTML = `<div style="padding: 20px; color: #38bdf8; text-align: center;">Загрузка ISO (${(file.size / (1024*1024)).toFixed(1)} MB) в память v86...</div>`;
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const buffer = event.target.result;
+                screenContainer.innerHTML = ''; 
+
+                try {
+                    window.v86_emulator = new V86({
+                        wasm_path: "https://cdn.jsdelivr.net/npm/v86@latest/build/v86.wasm",
+                        screen_container: screenContainer,
+                        bios: { url: "https://unpkg.com/v86@latest/bios/seabios.bin" },
+                        vga_bios: { url: "https://unpkg.com/v86@latest/bios/vgabios.bin" },
+                        cdrom: { buffer: buffer },
+                        autostart: true,
+                        memory_size: 512 * 1024 * 1024,
+                        vga_memory_size: 8 * 1024 * 1024
+                    });
+                    console.log("[v86]: Успешный запуск образа:", file.name);
+                } catch (err) {
+                    console.error("[v86 Error]:", err.message);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        });
+    }
+
+    // Навигация бокового меню
+    document.querySelectorAll('.menu-item').forEach(item => {
+        item.addEventListener('click', () => {
+            document.querySelectorAll('.menu-item').forEach(i => i.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            item.classList.add('active');
+            const target = document.getElementById(item.dataset.tab);
+            if (target) target.classList.add('active');
+        });
     });
 });
