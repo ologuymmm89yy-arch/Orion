@@ -1,4 +1,9 @@
-# Orion UI Library
+## Credits & Acknowledgements
+
+* **Original Orion Library**: Created by [shlexware](https://github.com/shlexware/Orion) — original UI concept and base architecture.
+* **Base Fork**: Based on the updated fork by [jensonhirst](https://github.com/jensonhirst/Orion) (`jensonhirst/Orion`).
+* **Modernized Custom Build**: Enhanced and maintained by [ologuymmm89yy-arch](https://github.com/ologuymmm89yy-arch/Orion) — added multi-language support (RU/UK/PL/ES/DE), offline icon mapping, in-game Luau code editor, AFK system, expanded themes, and mobile performance optimizations.
+* 
 
 > **Temporary compatibility notice:** the library is currently under runtime repair. It may fail during startup in some protected loaders or environments with restricted HTTP, GUI, or `loadstring` support. Roblox Studio validation is the reference environment.
 
