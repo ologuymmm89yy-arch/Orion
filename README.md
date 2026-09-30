@@ -1,144 +1,77 @@
-## Credits & Acknowledgements
+# Orion UI
 
-* **Original Orion Library**: Created by [shlexware](https://github.com/shlexware/Orion) — original UI concept and base architecture.
-* **Base Fork**: Based on the updated fork by [jensonhirst](https://github.com/jensonhirst/Orion) (`jensonhirst/Orion`).
-* **Modernized Custom Build**: Enhanced and maintained by [ologuymmm89yy-arch](https://github.com/ologuymmm89yy-arch/Orion) — added multi-language support (RU/UK/PL/ES/DE), offline icon mapping, in-game Luau code editor, AFK system, expanded themes, and mobile performance optimizations.
-* 
+Orion is a Luau UI library for Roblox. It provides windows, tabs, themed controls, touch-aware layouts, optional runtime modules, AFK state, and a lightweight in-game code editor.
 
-> **Temporary compatibility notice:** the library is currently under runtime repair. It may fail during startup in some protected loaders or environments with restricted HTTP, GUI, or `loadstring` support. Roblox Studio validation is the reference environment.
+## Project files
 
-A modern Luau windowing library with a polished Orion-inspired visual style, responsive layout behavior, soft glass UI, and a cleaner theming system.
+- `source` is the library entry point.
+- `Documentation.md` contains the API guide and component examples.
+- [`docs/`](docs/) is the published website and searchable API reference.
 
-## Current status
+## Quick start
 
-- ✅ Core UI framework working
-- ✅ Mobile-friendly sizing and touch support
-- ✅ Modern theme presets: Default, Soft, Glass, Night, Aurora
-- ✅ Per-theme color customization
-- ✅ Glass, gradient, and shadow helpers
-- ✅ Animated notification toasts
-- ✅ Cleaner window-level API wrapper
-- ✅ Built-in icon fallbacks without startup HTTP dependency
-- ⚠️ Runtime compatibility with third-party loaders is not guaranteed yet
-
-## Features
-
-- Modern rounded panels and premium visual polish
-- Lightweight window builder with tabs and sections
-- Search box support for larger windows
-- Theme switching with `Theme`, `UseTheme`, and `SetThemeColor`
-- Built-in localization for English, Russian, Ukrainian, Polish, Spanish, and German
-- Notification API for status feedback and prompts
-- Built-in icon mappings with `RegisterIcon` for custom assets
-- Optional AFK detection with timeout, recovery, and callback support
-- Lightweight Luau code editor widget with line numbers
-- Safe optional module registry for feature packs
-- General scripting utilities: `SafeCall`, `Debounce`, `Throttle`, `DeepCopy`, and signals
-- Adaptive behavior for desktop and mobile layouts
-
-## Example usage
+In an environment that supports loading the source URL:
 
 ```lua
-local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/ologuymmm89yy-arch/Orion/main/source"))()
+local OrionLib = loadstring(game:HttpGet(
+    "https://raw.githubusercontent.com/ologuymmm89yy-arch/Orion/main/source"
+))()
 
 local Window = OrionLib:MakeWindow({
-    Name = "Orion Modern",
+    Name = "My project",
     Theme = "Glass",
-    Language = "ru",
-    SaveConfig = false,
+    Language = "en",
 })
 
-Window:Theme("Soft")
-Window:SetThemeColor("Soft", "Main", Color3.fromRGB(245, 247, 250))
-Window:Notification({
-    Name = "Loaded",
-    Content = "Theme updated successfully",
-    Time = 4,
-})
-
-Window:ConfigureAFK({
-    Enabled = true,
-    Timeout = 300,
-    Callback = function(IsAFK, Reason)
-        print("AFK state:", IsAFK, Reason)
+local Tools = Window:MakeTab({Name = "Tools"})
+Tools:AddButton({
+    Name = "Run",
+    Callback = function()
+        print("Ready")
     end,
 })
+```
 
-local Editor = Window:MakeTab({Name = "Tools"}):AddCodeEditor({
-    Text = "print('Hello from Luau')",
-    Size = UDim2.new(1, 0, 0, 220),
+Use `Language` values `en`, `ru`, `uk`, `pl`, `es`, or `de`. You can also load the `source` file directly in a compatible Roblox project instead of fetching it at runtime.
+
+## Code editor
+
+The editor edits text inside the UI. It does not execute entered code or write Studio project files.
+
+```lua
+local Editor = Tools:AddCodeEditor({
+    Text = "print('Hello')",
+    ReadOnly = false,
 })
 
+Editor:Focus()
+Editor:ReplaceAll("Hello", "Ready")
 print(Editor:Get())
-print(#Editor:Find("print"))
-Editor:ReplaceAll("Hello", "Welcome")
+Editor:Blur()
 ```
 
-Available language codes: `en`, `ru`, `uk`, `pl`, `es`, `de`.
+`Editor:Find(query)` returns the matching text ranges. `Editor:Set(text)`, `Editor:Clear()`, and `Editor:SetReadOnly(boolean)` update the widget.
 
-You can switch language later with `OrionLib:SetLanguage("uk")` or `Window:Language("pl")`. Custom dictionaries can be registered with `RegisterLanguage`.
+## Loading screen
 
-Optional modules can be registered as ordinary Luau tables:
+The intro screen uses the selected theme, animates its entrance, and supports custom text, subtitle, and icon. It is enabled by default outside performance mode. Set `IntroDuration` between `0.5` and `6` seconds; the animated bar is an activity indicator, not a measured loading percentage.
 
 ```lua
-Window:RegisterModule("Example", {
-    Init = function(Context)
-        print("Module enabled")
-    end,
-    Destroy = function(Context)
-        print("Module disabled")
-    end,
+local Window = OrionLib:MakeWindow({
+    Name = "My project",
+    IntroEnabled = true,
+    IntroText = "My project",
+    IntroSubtitle = "Preparing your interface",
+    IntroDuration = 2,
 })
-Window:EnableModule("Example")
 ```
 
-Modules are lifecycle helpers, not file installers. Roblox runtime code cannot write Studio files or install plugins by itself.
+## Themes and modules
 
-The library also exposes original scripting helpers through `OrionLib.Utils` or `Window.Utils`:
+Built-in themes are `Default`, `Soft`, `Glass`, `Night`, and `Aurora`. Register custom palettes with `OrionLib:RegisterTheme` and switch themes with `Window:Theme`.
 
-```lua
-local SafeCall = OrionLib.Utils.SafeCall
-local Debounced = OrionLib.Utils.Debounce(function(Value)
-    print(Value)
-end, 0.2)
+Optional modules are ordinary Luau tables with `Init` and/or `Destroy` methods. Register them with `Window:RegisterModule`, then use `Window:EnableModule` and `Window:DisableModule` to control their lifecycle.
 
-Debounced("ready")
-```
+## Compatibility
 
-The editor is a lightweight in-game Luau surface. It does not execute text, install Studio plugins, or write project files.
-
-## Public API
-
-- `Window:MakeTab(config)` and `Tab:AddSection(config)` for layout
-- `Tab:AddCodeEditor(config)` for editable or read-only Luau text
-- `Window:RegisterModule(name, module)` for optional runtime feature packs
-- `Window:ConfigureAFK(config)` for opt-in inactivity state
-- `Window:RegisterIcon(name, asset)` for custom icon mappings
-- `Window.Utils` for reusable scripting helpers
-
-## Theme presets
-
-- Default
-- Soft
-- Glass
-- Night
-- Aurora
-
-You can also create custom themes with `RegisterTheme` or `CreateTheme` and override colors per key.
-
-## Compatibility status
-
-The source is being stabilized for two broad environments:
-
-- standard Roblox Studio / supported client execution;
-- environments that expose compatible GUI and HTTP APIs.
-
-Protected loaders may report errors on different line numbers because they wrap or transform the script before execution. A loader can also block `HttpService`, `game:HttpGetAsync`, `CoreGui`, or `loadstring`. Those restrictions are outside the library and can prevent startup even when the source is valid.
-
-For debugging, capture the complete error text and its stack trace. Do not rely on a line number alone.
-
-> Repo status: synced to the current GitHub `main` branch.
-
-## Validation
-
-The source passes the available static diagnostics. Runtime verification should be performed in Roblox Studio on desktop and mobile. Third-party loader compatibility remains environment-dependent.
+The library uses Roblox APIs. Runtime loading through `loadstring` or HTTP depends on the host environment and is not available in every Roblox context. Third-party loaders may also restrict HTTP requests or GUI parents; test in the target environment and include the full error and stack trace when reporting a failure.

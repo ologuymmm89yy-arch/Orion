@@ -26,14 +26,16 @@ apiSearch.addEventListener('input', (event) => {
 document.querySelectorAll('[data-copy-target]').forEach((button) => {
   button.addEventListener('click', async () => {
     const target = document.getElementById(button.dataset.copyTarget);
+    if (!target) return;
     const text = target.innerText;
+    const originalText = button.textContent;
     try {
       await navigator.clipboard.writeText(text);
-      const original = button.innerHTML;
-      button.textContent = 'Copied';
-      setTimeout(() => { button.innerHTML = original; }, 1300);
+      button.textContent = 'Скопировано';
+      setTimeout(() => { button.textContent = originalText; }, 1300);
     } catch {
-      button.textContent = 'Select the snippet';
+      button.textContent = 'Не удалось скопировать';
+      setTimeout(() => { button.textContent = originalText; }, 1800);
     }
   });
 });

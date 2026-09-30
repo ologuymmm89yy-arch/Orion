@@ -1,67 +1,65 @@
 <!doctype html>
-<html lang="en">
+<html lang="ru">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0d1118">
-  <meta name="description" content="Orion UI Library: a mobile-friendly Luau UI toolkit with themes, modules, AFK support, and a lightweight code editor.">
-  <title>Orion UI Library</title>
+  <meta name="description" content="Orion UI — библиотека интерфейсов для Roblox Luau. Быстрый старт, темы, редактор кода и справочник API.">
+  <title>Orion UI — справочник</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="aurora aurora-one"></div>
-  <div class="aurora aurora-two"></div>
   <header class="topbar">
-    <a class="brand" href="#top" aria-label="Orion home"><span class="brand-mark">O</span><span>Orion</span></a>
-    <nav class="nav-links" aria-label="Primary navigation">
-      <a href="#features">Features</a>
-      <a href="#quickstart">Quick start</a>
-      <a href="#api">API</a>
+    <a class="brand" href="#top" aria-label="На главную Orion"><span class="brand-mark">O</span><span>Orion</span></a>
+    <nav class="nav-links" aria-label="Основная навигация">
+      <a href="#features">Возможности</a>
+      <a href="#quickstart">Начало работы</a>
+      <a href="#api">Справочник</a>
       <a href="https://github.com/ologuymmm89yy-arch/Orion" target="_blank" rel="noreferrer">GitHub <span class="external">↗</span></a>
     </nav>
-    <button class="icon-button" id="themeToggle" type="button" aria-label="Toggle theme">◐</button>
+    <button class="icon-button" id="themeToggle" type="button" aria-label="Переключить тему" title="Переключить тему">◐</button>
   </header>
 
   <main id="top">
     <section class="hero shell">
       <div class="hero-copy">
-        <p class="eyebrow"><span class="pulse"></span> Open toolkit for Roblox Luau</p>
-        <h1>Build interfaces that feel <em>alive.</em></h1>
-        <p class="hero-lede">A calm, capable UI layer for creators who want mobile support, expressive themes, runtime modules, and a code editor without a maze of dependencies.</p>
+        <p class="eyebrow"><span class="pulse"></span> Библиотека интерфейсов для Roblox Luau</p>
+        <h1>Orion UI <em>для Luau.</em></h1>
+        <p class="hero-lede">Создавайте окна, вкладки и элементы интерфейса с темами, поддержкой сенсорного ввода и встроенным редактором кода.</p>
         <div class="hero-actions">
-          <a class="button button-primary" href="#quickstart">Start building <span>→</span></a>
-          <a class="button button-quiet" href="https://github.com/ologuymmm89yy-arch/Orion" target="_blank" rel="noreferrer">View source ↗</a>
+          <a class="button button-primary" href="#quickstart">Быстрый старт <span>→</span></a>
+          <a class="button button-quiet" href="https://github.com/ologuymmm89yy-arch/Orion" target="_blank" rel="noreferrer">Исходный код ↗</a>
         </div>
-        <div class="hero-meta"><span>Luau first</span><span>Mobile-aware</span><span>No remote icon dependency</span></div>
+        <div class="hero-meta"><span>Roblox Luau</span><span>ПК и сенсорный ввод</span><span>Без загрузки каталога иконок</span></div>
       </div>
       <div class="window-preview" aria-label="Orion interface preview">
         <div class="preview-top"><div class="traffic"><i></i><i></i><i></i></div><span>Orion / Glass</span><span class="preview-status">● ready</span></div>
         <div class="preview-body">
           <aside class="preview-sidebar"><div class="avatar">O</div><strong>orion</strong><span class="sidebar-line active"></span><span class="sidebar-line"></span><span class="sidebar-line short"></span><div class="sidebar-bottom">⌘</div></aside>
-          <div class="preview-content"><div class="content-heading"><div><small>WORKSPACE</small><h3>Creative tools</h3></div><span class="mini-pill">Glass</span></div><div class="metric-row"><div><small>ACTIVE MODULES</small><b>04</b></div><div><small>LATENCY</small><b>12ms</b></div></div><div class="preview-code"><span class="line-no">01<br>02<br>03<br>04</span><code><span class="kw">local</span> Window = OrionLib:MakeWindow({<br>&nbsp; Name = <span class="str">"Studio"</span>,<br>&nbsp; Theme = <span class="str">"Glass"</span>,<br>})</code></div></div>
+          <div class="preview-content"><div class="content-heading"><div><small>ПРИМЕР КОДА</small><h3>Первое окно</h3></div><span class="mini-pill">Glass</span></div><div class="metric-row"><div><small>ТЕМЫ</small><b>05</b></div><div><small>ЯЗЫКИ</small><b>06</b></div></div><div class="preview-code"><span class="line-no">01<br>02<br>03<br>04</span><code><span class="kw">local</span> Window = OrionLib:MakeWindow({<br>&nbsp; Name = <span class="str">"Мой проект"</span>,<br>&nbsp; Theme = <span class="str">"Glass"</span>,<br>})</code></div></div>
         </div>
       </div>
     </section>
 
     <section class="section shell" id="features">
-      <div class="section-heading"><p class="eyebrow">Small surface, deep control</p><h2>Everything you need to shape the experience.</h2><p>Designed for repeated use: scan quickly, wire features cleanly, and keep the UI responsive when the project grows.</p></div>
+      <div class="section-heading"><p class="eyebrow">Возможности библиотеки</p><h2>Основные инструменты Orion.</h2><p>Добавляйте нужные компоненты по мере роста проекта и управляйте поведением интерфейса через API.</p></div>
       <div class="feature-grid">
-        <article class="feature-card feature-wide"><span class="feature-icon">✦</span><div><h3>Soft by default</h3><p>Glass panels, gradients, shadows, and five considered themes give your interface a visual language from the first window.</p></div><div class="swatches"><i></i><i></i><i></i><i></i></div></article>
-        <article class="feature-card"><span class="feature-icon">⌘</span><h3>Luau editor</h3><p>Line numbers, autocomplete, find, replace, callbacks, and read-only mode in a lightweight in-game editor.</p><a href="#api">Explore editor →</a></article>
-        <article class="feature-card"><span class="feature-icon">◌</span><h3>Runtime modules</h3><p>Register optional feature packs with guarded <code>Init</code> and <code>Destroy</code> lifecycles.</p><a href="#api">See module API →</a></article>
-        <article class="feature-card feature-wide"><span class="feature-icon">⌁</span><div><h3>Built for the edges</h3><p>Touch controls, AFK state, cleanup paths, icon fallbacks, and performance guards keep the foundation useful beyond the happy path.</p></div><span class="edge-label">desktop / touch / studio</span></article>
+        <article class="feature-card feature-wide"><span class="feature-icon">✦</span><div><h3>Темы оформления</h3><p>Пять встроенных тем, регистрация пользовательских палитр и изменение отдельных цветов на ходу.</p></div><div class="swatches"><i></i><i></i><i></i><i></i></div></article>
+        <article class="feature-card"><span class="feature-icon">⌘</span><h3>Редактор Luau</h3><p>Нумерация строк, поиск, замена, режим только для чтения и управление фокусом.</p><a href="#api">Открыть справочник →</a></article>
+        <article class="feature-card"><span class="feature-icon">◌</span><h3>Модули и утилиты</h3><p>Подключайте необязательные модули и используйте сигналы, debounce и throttle.</p><a href="#api">Методы API →</a></article>
+        <article class="feature-card feature-wide"><span class="feature-icon">⌁</span><div><h3>Ввод и состояние</h3><p>Сенсорное управление, обнаружение бездействия и очистка подключений при закрытии интерфейса.</p></div><span class="edge-label">ПК · сенсорный экран · Studio</span></article>
       </div>
     </section>
 
     <section class="section shell split-section" id="quickstart">
-      <div class="section-heading"><p class="eyebrow">Quick start</p><h2>One window. A lot of room to grow.</h2><p>Copy the smallest useful setup, then add only the pieces your project needs.</p><button class="copy-button" data-copy-target="quick-code" type="button">Copy snippet <span>⌘</span></button></div>
+      <div class="section-heading"><p class="eyebrow">Начало работы</p><h2>Создайте первое окно.</h2><p>Скопируйте пример и добавьте нужные элементы из справочника ниже.</p><button class="copy-button" data-copy-target="quick-code" type="button">Скопировать код <span>⌘</span></button></div>
       <div class="code-panel"><div class="code-panel-bar"><span>main.luau</span><span class="code-dot">●</span></div><pre id="quick-code"><code><span class="comment">-- Load the current Orion source</span>
 <span class="kw">local</span> OrionLib = <span class="fn">loadstring</span>(game:<span class="fn">HttpGet</span>(<span class="str">"https://raw.githubusercontent.com/ologuymmm89yy-arch/Orion/main/source"</span>))()
 
 <span class="kw">local</span> Window = OrionLib:<span class="fn">MakeWindow</span>({
-  Name = <span class="str">"My workspace"</span>,
+  Name = <span class="str">"Мой проект"</span>,
   Theme = <span class="str">"Glass"</span>,
-  Language = <span class="str">"en"</span>,
+  Language = <span class="str">"ru"</span>,
 })
 
 <span class="kw">local</span> Tools = Window:<span class="fn">MakeTab</span>({Name = <span class="str">"Tools"</span>})
@@ -71,23 +69,93 @@ Tools:<span class="fn">AddButton</span>({Name = <span class="str">"Run"</span>, 
     </section>
 
     <section class="section shell api-section" id="api">
-      <div class="section-heading"><p class="eyebrow">API shelf</p><h2>Find your next building block.</h2></div>
-      <label class="search-box"><span>⌕</span><input id="apiSearch" type="search" placeholder="Search API, theme, module..." autocomplete="off"></label>
+      <div class="section-heading"><p class="eyebrow">Справочник API</p><h2>Методы и примеры.</h2><p>Откройте раздел, чтобы посмотреть сигнатуру и пример использования.</p></div>
+      <label class="search-box"><span>⌕</span><input id="apiSearch" type="search" placeholder="Поиск: тема, редактор, AFK, модуль..." autocomplete="off" aria-label="Поиск по справочнику API"></label>
       <div class="api-grid" id="apiGrid">
-        <button class="api-card" data-search="theme themes colors glass soft night aurora"><span>01</span><strong>Theme system</strong><small>Presets, custom colors, live switching</small></button>
-        <button class="api-card" data-search="code editor find replace autocomplete luau"><span>02</span><strong>Code editor</strong><small>Readable editing tools inside your UI</small></button>
-        <button class="api-card" data-search="module plugin init destroy feature pack"><span>03</span><strong>Module packs</strong><small>Optional features with clean lifecycles</small></button>
-        <button class="api-card" data-search="afk idle input timeout callback"><span>04</span><strong>AFK state</strong><small>Opt-in idle detection and recovery</small></button>
-        <button class="api-card" data-search="icon fallback register asset"><span>05</span><strong>Icon registry</strong><small>Own mappings, no remote icon JSON</small></button>
-        <button class="api-card" data-search="safe call debounce throttle signal utility"><span>06</span><strong>Script utilities</strong><small>Small primitives for ordinary Luau work</small></button>
+        <details class="api-card" data-search="тема темы theme themes цвета color settheme setthemecolor registertheme стекло soft night aurora">
+          <summary><span>01</span><strong>Темы</strong><small>Встроенные палитры, свои темы и цвета</small></summary>
+          <div class="api-detail"><p>Переключайте тему окна или зарегистрируйте собственную палитру.</p><pre><code>OrionLib:RegisterTheme("Ocean", {
+  Main = Color3.fromRGB(18, 24, 32),
+  Second = Color3.fromRGB(27, 38, 51),
+})
+Window:Theme("Ocean")
+Window:SetThemeColor("Ocean", "Main", Color3.fromRGB(20, 30, 40))</code></pre></div>
+        </details>
+        <details class="api-card" data-search="редактор код code editor luau поиск find замена replace фокус focus blur readonly">
+          <summary><span>02</span><strong>Редактор Luau</strong><small>Текст, поиск, замена и управление фокусом</small></summary>
+          <div class="api-detail"><p>Виджет редактирует текст внутри интерфейса и не исполняет его.</p><pre><code>local Editor = Tab:AddCodeEditor({
+  Text = "print('Привет')",
+  ReadOnly = false,
+})
+Editor:Focus()
+print(Editor:Get())
+Editor:ReplaceAll("Привет", "Готово")
+Editor:Blur()</code></pre></div>
+        </details>
+        <details class="api-card" data-search="модуль модули module modules init destroy включить выключить enable disable">
+          <summary><span>03</span><strong>Модули</strong><small>Необязательные функции с Init и Destroy</small></summary>
+          <div class="api-detail"><p>Модуль должен реализовать хотя бы один метод жизненного цикла.</p><pre><code>Window:RegisterModule("Tools", {
+  Init = function(Context)
+    print("Модуль включён")
+  end,
+  Destroy = function(Context)
+    print("Модуль выключен")
+  end,
+})
+Window:EnableModule("Tools")</code></pre></div>
+        </details>
+        <details class="api-card" data-search="afk бездействие idle timeout callback активность setafk isafk">
+          <summary><span>04</span><strong>Состояние AFK</strong><small>Обнаружение бездействия и возврата</small></summary>
+          <div class="api-detail"><p>Отслеживание выключено по умолчанию. Минимальный таймаут составляет 10 секунд.</p><pre><code>Window:ConfigureAFK({
+  Enabled = true,
+  Timeout = 300,
+  Callback = function(IsAFK, Reason)
+    print(IsAFK, Reason)
+  end,
+})
+print(Window:IsAFK())</code></pre></div>
+        </details>
+        <details class="api-card" data-search="иконка иконки icon registericon asset изображение">
+          <summary><span>05</span><strong>Иконки</strong><small>Локальный каталог и свои идентификаторы</small></summary>
+          <div class="api-detail"><p>Зарегистрируйте короткое имя для Roblox asset ID и используйте его во вкладке.</p><pre><code>OrionLib:RegisterIcon("settings", 1234567890)
+
+local Tab = Window:MakeTab({
+  Name = "Настройки",
+  Icon = "settings",
+})</code></pre></div>
+        </details>
+        <details class="api-card" data-search="утилиты utility safecall debounce throttle signal deep copy сигнал">
+          <summary><span>06</span><strong>Утилиты</strong><small>Защищённый вызов, задержка и сигналы</small></summary>
+          <div class="api-detail"><p>Общие функции доступны через <code>OrionLib.Utils</code> и <code>Window.Utils</code>.</p><pre><code>local Utils = Window.Utils
+local Delayed = Utils.Debounce(function(Value)
+  print(Value)
+end, 0.2)
+Delayed("готово")
+
+local Signal = Utils.CreateSignal()
+local Connection = Signal:Connect(print)
+Signal:Fire("событие")
+Connection:Disconnect()</code></pre></div>
+        </details>
+        <details class="api-card" data-search="загрузка экран заставка intro splash прогресс длительность introduration introenabled introtext introsubtitle introicon">
+          <summary><span>07</span><strong>Экран загрузки</strong><small>Настройка заставки при создании окна</small></summary>
+          <div class="api-detail"><p>Заставка включена по умолчанию на ПК и выключена в режиме производительности. Полоса показывает анимацию ожидания, а не процент реальной загрузки.</p><pre><code>local Window = OrionLib:MakeWindow({
+  Name = "Мой проект",
+  IntroEnabled = true,
+  IntroText = "Мой проект",
+  IntroSubtitle = "Подготавливаем интерфейс",
+  IntroDuration = 2,
+  IntroIcon = "rbxassetid://1234567890",
+})</code></pre></div>
+        </details>
       </div>
-      <p class="empty-state" id="emptyState" hidden>No matching building block.</p>
+      <p class="empty-state" id="emptyState" hidden>По этому запросу ничего не найдено.</p>
     </section>
 
-    <section class="compat shell"><div><p class="eyebrow">Know the edges</p><h2>Stable foundations beat mystery magic.</h2><p>Orion targets standard Roblox APIs and compatible client environments. Protected loaders may change line numbers or restrict HTTP, GUI parents, or <code>loadstring</code>. Test in Roblox Studio before shipping.</p></div><div class="compat-chip"><span class="pulse"></span><strong>Runtime status</strong><small>Studio validation recommended</small></div></section>
+    <section class="compat shell"><div><p class="eyebrow">Совместимость</p><h2>Проверяйте в Roblox Studio.</h2><p>Библиотека использует API Roblox. Совместимость сторонних загрузчиков зависит от доступности HTTP, GUI и <code>loadstring</code>; эти ограничения не контролируются Orion.</p></div><div class="compat-chip"><span class="pulse"></span><strong>Среда проверки</strong><small>Roblox Studio · ПК и мобильные устройства</small></div></section>
   </main>
 
-  <footer class="footer shell"><span>© 2026 Orion UI Library</span><span>Built for people who keep making.</span><a href="https://github.com/ologuymmm89yy-arch/Orion" target="_blank" rel="noreferrer">GitHub ↗</a></footer>
+  <footer class="footer shell"><span>© 2026 Orion UI</span><span>Справочник по библиотеке Luau</span><a href="https://github.com/ologuymmm89yy-arch/Orion" target="_blank" rel="noreferrer">GitHub ↗</a></footer>
   <script src="app.js"></script>
 </body>
 </html>

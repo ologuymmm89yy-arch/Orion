@@ -1,12 +1,12 @@
 # Orion Library
 
-This documentation describes the current development build of Orion Library.
+This guide describes the current Orion Library source. The searchable website reference is available in [`docs/`](docs/).
 
-> **Temporary compatibility notice:** the library is not yet guaranteed to start in every third-party or protected loader. Some environments modify the script, block HTTP requests, restrict GUI parents, or expose incomplete Roblox APIs. Test first in Roblox Studio or a compatible client environment.
+> **Compatibility:** Orion uses Roblox APIs. Runtime loading through HTTP or `loadstring` depends on the host environment; third-party loaders may also restrict HTTP requests, GUI parents, or other APIs. Test in the target environment and include the full error and stack trace when reporting a problem.
 
 ## Current limitation
 
-The library is currently being stabilized after a large UI, theme, localization, and performance update. In unsupported loaders it may fail before `MakeWindow` is called. A reported line such as `2`, `5`, or `6` can belong to the loader wrapper rather than the library source, so always copy the full error message and stack trace when reporting a problem.
+Startup failures can occur before `MakeWindow` when the host blocks a required API. A reported line number can belong to a loader wrapper rather than the library source, so include the full error message and stack trace when reporting a problem.
 
 The most common external causes are:
 
@@ -33,10 +33,12 @@ Editor:Set("local Ready = true")
 print(Editor:Get())
 print(#Editor:Find("Ready"))
 Editor:ReplaceAll("Ready", "Loaded")
+Editor:Focus()
+Editor:Blur()
 Editor:Clear()
 ```
 
-`AddCodeEditor` also supports `Size`, `TextSize`, `Placeholder`, and `Callback`. It is a UI editor only: entered text is never executed by the library.
+`AddCodeEditor` also supports `Size`, `TextSize`, `Placeholder`, and `Callback`. `Focus()` captures keyboard input; `Blur()` releases it. The widget is a UI editor only: entered text is never executed by the library or written to Studio files.
 
 Feature packs can be registered as normal Luau modules with guarded lifecycle methods:
 
@@ -125,7 +127,9 @@ Theme = <string|table> - Uses a registered theme name or a custom theme table fo
 PerformanceMode = <bool> - Reduces animation and startup work for low-end devices. Enabled by default on touch devices.
 IntroEnabled = <bool> - Whether or not to show the intro animation.
 IntroText = <string> - Text to show in the intro animation.
-IntroIcon = <string> - URL to the image you want to use in the intro animation.
+IntroSubtitle = <string> - Optional subtitle to show below the intro title.
+IntroIcon = <string> - Roblox asset ID to show in the intro animation.
+IntroDuration = <number> - Time in seconds to show the intro, clamped from 0.5 to 6.
 Icon = <string> - URL to the image you want displayed on the window.
 CloseCallback = <function> - Function to execute when the window is closed.
 BackgroundImage = <number|string> - Optional static background asset ID.
