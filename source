@@ -2482,23 +2482,23 @@ function OrionLib:MakeWindow(WindowConfig)
 					Size = UDim2.new(1, 0, 1, 0)
 				})
 
-				local ToggleBox = SetChildren(SetProps(MakeElement("RoundFrame", ToggleConfig.Color, 0, 4), {
-					Size = UDim2.new(0, 24, 0, 24),
-					Position = UDim2.new(1, -24, 0.5, 0),
-					AnchorPoint = Vector2.new(0.5, 0.5)
+				local ToggleBox = SetChildren(SetProps(MakeElement("RoundFrame", ToggleConfig.Color, 0, 12), {
+					Size = UDim2.new(0, 44, 0, 24),
+					Position = UDim2.new(1, -12, 0.5, 0),
+					AnchorPoint = Vector2.new(1, 0.5),
+					Name = "Switch"
 				}), {
 					SetProps(MakeElement("Stroke"), {
 						Color = ToggleConfig.Color,
 						Name = "Stroke",
 						Transparency = 0.5
 					}),
-					SetProps(MakeElement("Image", "rbxassetid://3944680095"), {
-						Size = UDim2.new(0, 20, 0, 20),
-						AnchorPoint = Vector2.new(0.5, 0.5),
-						Position = UDim2.new(0.5, 0, 0.5, 0),
-						ImageColor3 = Color3.fromRGB(255, 255, 255),
-						Name = "Ico"
-					}),
+					AddThemeObject(SetProps(MakeElement("RoundFrame", Color3.fromRGB(255, 255, 255), 0, 8), {
+						Size = UDim2.new(0, 16, 0, 16),
+						Position = UDim2.new(0, 4, 0.5, 0),
+						AnchorPoint = Vector2.new(0, 0.5),
+						Name = "Knob"
+					}), "Text")
 				})
 
 				local ToggleFrame = AddThemeObject(SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(255, 255, 255), 0, 5), {
@@ -2506,7 +2506,7 @@ function OrionLib:MakeWindow(WindowConfig)
 					Parent = ItemParent
 				}), {
 					AddThemeObject(SetProps(MakeElement("Label", ToggleConfig.Name, 15), {
-						Size = UDim2.new(1, -12, 1, 0),
+						Size = UDim2.new(1, -70, 1, 0),
 						Position = UDim2.new(0, 12, 0, 0),
 						Font = Enum.Font.GothamBold,
 						Name = "Content"
@@ -2517,10 +2517,10 @@ function OrionLib:MakeWindow(WindowConfig)
 				}), "Second")
 
 				function Toggle:Set(Value)
-					Toggle.Value = Value
-					TweenService:Create(ToggleBox, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {BackgroundColor3 = Toggle.Value and ToggleConfig.Color or OrionLib.Themes.Default.Divider}):Play()
+					Toggle.Value = Value == true
+					TweenService:Create(ToggleBox, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {BackgroundColor3 = Toggle.Value and ToggleConfig.Color or OrionLib.Themes[OrionLib.SelectedTheme].Divider}):Play()
 					TweenService:Create(ToggleBox.Stroke, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Color = Toggle.Value and ToggleConfig.Color or OrionLib.Themes.Default.Stroke}):Play()
-					TweenService:Create(ToggleBox.Ico, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {ImageTransparency = Toggle.Value and 0 or 1, Size = Toggle.Value and UDim2.new(0, 20, 0, 20) or UDim2.new(0, 8, 0, 8)}):Play()
+					TweenService:Create(ToggleBox.Knob, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Position = Toggle.Value and UDim2.new(1, -20, 0.5, 0) or UDim2.new(0, 4, 0.5, 0)}):Play()
 					ToggleConfig.Callback(Toggle.Value)
 				end    
 
@@ -2850,14 +2850,35 @@ function OrionLib:MakeWindow(WindowConfig)
 					Click
 				}), "Second")
 				local BindKeyboard
+				local BindKeyboardHeader
+				local function HideBindKeyboard()
+					if BindKeyboard then
+						BindKeyboard.Visible = false
+					end
+					if BindKeyboardHeader then
+						BindKeyboardHeader.Visible = false
+					end
+					Bind.Binding = false
+					BindBox.Value.Text = Bind.Value
+				end
 
 				if IsMobile then
 					local KeyboardKeys = {
+						"Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine",
 						"Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P",
 						"A", "S", "D", "F", "G", "H", "J", "K", "L",
 						"Z", "X", "C", "V", "B", "N", "M", "Space",
 						"LeftShift", "LeftControl", "LeftAlt", "RightShift", "RightControl", "RightAlt",
-						"Tab", "Enter", "Backspace", "Delete", "Escape", "Up", "Down", "Left", "Right"
+						"F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12",
+						"Tab", "Enter", "Backspace", "Delete", "Escape", "Home", "End", "PageUp", "PageDown",
+						"Up", "Down", "Left", "Right"
+					}
+					local KeyLabels = {
+						Zero = "0", One = "1", Two = "2", Three = "3", Four = "4",
+						Five = "5", Six = "6", Seven = "7", Eight = "8", Nine = "9",
+						LeftShift = "L Shift", LeftControl = "L Ctrl", LeftAlt = "L Alt",
+						RightShift = "R Shift", RightControl = "R Ctrl", RightAlt = "R Alt",
+						Backspace = "Bksp", PageUp = "PgUp", PageDown = "PgDn"
 					}
 					local KeyboardGrid = Create("UIGridLayout", {
 						CellPadding = UDim2.new(0, 4, 0, 4),
@@ -2869,13 +2890,45 @@ function OrionLib:MakeWindow(WindowConfig)
 						Parent = Orion,
 						AnchorPoint = Vector2.new(0.5, 1),
 						Position = UDim2.new(0.5, 0, 1, -12),
-						Size = UDim2.new(0.9, 0, 0, 174),
+						Size = UDim2.new(0.9, 0, 0, 190),
 						Visible = false,
 						ZIndex = 30
 					}), {
 						MakeElement("Padding", 8, 8, 8, 8),
 						KeyboardGrid
 					}), "Main")
+					local KeyboardClose = SetProps(MakeElement("Button"), {
+						Size = UDim2.new(0, 32, 1, 0),
+						Position = UDim2.new(1, -8, 0, 0),
+						AnchorPoint = Vector2.new(1, 0),
+						BackgroundTransparency = 1,
+						ZIndex = 34
+					})
+					BindKeyboardHeader = AddThemeObject(SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(25, 25, 25), 0, 6), {
+						Parent = Orion,
+						AnchorPoint = Vector2.new(0.5, 1),
+						Position = UDim2.new(0.5, 0, 1, -202),
+						Size = UDim2.new(0.9, 0, 0, 28),
+						Visible = false,
+						ZIndex = 33
+					}), {
+						AddThemeObject(SetProps(MakeElement("Label", "Select a key", 12), {
+							Size = UDim2.new(1, -44, 1, 0),
+							Position = UDim2.new(0, 10, 0, 0),
+							TextXAlignment = Enum.TextXAlignment.Left,
+							ZIndex = 34
+						}), "Text"),
+						AddThemeObject(SetProps(MakeElement("Image", "rbxassetid://7072725342"), {
+							Size = UDim2.new(0, 14, 0, 14),
+							Position = UDim2.new(1, -16, 0.5, 0),
+							AnchorPoint = Vector2.new(0.5, 0.5),
+							ZIndex = 34
+						}), "Text"),
+						AddThemeObject(MakeElement("Stroke"), "Stroke"),
+						KeyboardClose
+					}), "Second")
+
+					AddConnection(KeyboardClose.MouseButton1Click, HideBindKeyboard)
 
 					AddConnection(KeyboardGrid:GetPropertyChangedSignal("AbsoluteContentSize"), function()
 						BindKeyboard.CanvasSize = UDim2.new(0, 0, 0, KeyboardGrid.AbsoluteContentSize.Y + 16)
@@ -2887,7 +2940,7 @@ function OrionLib:MakeWindow(WindowConfig)
 							Size = UDim2.new(0, 42, 0, 30),
 							ZIndex = 31
 						}), {
-							AddThemeObject(SetProps(MakeElement("Label", KeyName:gsub("Left", "L "):gsub("Control", "Ctrl"):gsub("Backspace", "Bksp"), 11), {
+							AddThemeObject(SetProps(MakeElement("Label", KeyLabels[KeyName] or KeyName, 11), {
 								Size = UDim2.new(1, 0, 1, 0),
 								TextXAlignment = Enum.TextXAlignment.Center,
 								ZIndex = 32
@@ -2899,7 +2952,7 @@ function OrionLib:MakeWindow(WindowConfig)
 						KeyClick.ZIndex = 33
 						AddConnection(KeyClick.MouseButton1Click, function()
 							Bind:Set(Enum.KeyCode[KeyName])
-							BindKeyboard.Visible = false
+							HideBindKeyboard()
 							SaveCfg(game.GameId)
 						end)
 					end
@@ -2916,6 +2969,7 @@ function OrionLib:MakeWindow(WindowConfig)
 						BindBox.Value.Text = ""
 						if BindKeyboard then
 							BindKeyboard.Visible = true
+							BindKeyboardHeader.Visible = true
 						end
 					end
 				end)
@@ -2939,6 +2993,7 @@ function OrionLib:MakeWindow(WindowConfig)
 						end
 						Key = Key or Bind.Value
 						Bind:Set(Key)
+						HideBindKeyboard()
 						SaveCfg(game.GameId)
 					end
 				end)

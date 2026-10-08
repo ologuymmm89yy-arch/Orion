@@ -245,7 +245,7 @@ OrionLib:SetTheme("Ocean")
 ```
 
 ### Mobile support
-The window automatically adapts to touch screens and stays within the available viewport. Buttons, dragging, sliders, color pickers, and keybind assignment support touch input. On mobile, selecting a keybind opens an on-screen keyboard with common navigation and control keys. When the window is hidden on a mobile device, use the `Open Orion` button to show it again.
+The window automatically adapts to touch screens and stays within the available viewport. Buttons, dragging, sliders, color pickers, and keybind assignment support touch input. On mobile, selecting a keybind opens an on-screen key picker with letters, digits, F1-F12, navigation and modifier keys. Use its close button to cancel selection; a physical key can also be selected when available. When the window is hidden on a mobile device, use the `Open Orion` button to show it again.
 
 
 
@@ -367,7 +367,7 @@ Callback = <function> - The function of the button.
 ```
 
 
-## Creating a Checkbox toggle
+## Creating a Toggle switch
 ```lua
 Tab:AddToggle({
 	Name = "This is a toggle!",
@@ -384,7 +384,9 @@ Callback = <function> - The function of the toggle.
 ]]
 ```
 
-### Changing the value of an existing Toggle
+`Toggle:Set(boolean)` updates the switch and invokes its callback. The callback is also invoked once when the toggle is created with its default value.
+
+### Changing an existing toggle
 ```lua
 CoolToggle:Set(true)
 ```
@@ -507,6 +509,8 @@ Hold = <bool> - Makes the bind work like: Holding the key > The bind returns tru
 Callback = <function> - The function of the bind.
 ]]
 ```
+
+On touch devices, tapping the bind opens the on-screen key picker. Choosing a key saves it when configuration saving is available; closing the picker cancels the pending selection.
 
 ### Chaning the value of a bind
 ```lua
