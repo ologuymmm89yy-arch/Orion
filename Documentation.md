@@ -167,6 +167,10 @@ AFKCallback = <function> - Called with (isAFK, reason) when the state changes.
 ]]
 ```
 
+### Minimizing and closing
+
+The minimize control collapses the window into a compact draggable title bar. Pressing the minimize control again restores the window. The close button hides the expanded window; while minimized, that button closes the interface completely and disconnects its events. A hidden window can be reopened with `RightShift` on desktop or the reopen button on touch devices.
+
 ### AFK support
 
 AFK detection is opt-in and uses standard Roblox input signals. It marks the user as AFK after the configured timeout, returns to active on input, and also listens for `LocalPlayer.Idled` when available.
@@ -524,6 +528,8 @@ Tab:AddDropdown({
 	Name = "Dropdown",
 	Default = "1",
 	Options = {"1", "2"},
+	Searchable = true,
+	SearchPlaceholder = "Filter options...",
 	Callback = function(Value)
 		print(Value)
 	end    
@@ -533,8 +539,27 @@ Tab:AddDropdown({
 Name = <string> - The name of the dropdown.
 Default = <string> - The default value of the dropdown.
 Options = <table> - The options in the dropdown.
+Searchable = <bool> - Adds a case-insensitive search field when true. Off by default.
+SearchPlaceholder = <string> - Placeholder for the dropdown search field.
 Callback = <function> - The function of the dropdown.
 ]]
+```
+
+Search only changes which option buttons are visible; it does not change the option values or callback contract. When no value matches, the dropdown shows a localized empty-state label. The current query is reapplied after `Refresh`.
+
+```lua
+local Modes = Tab:AddDropdown({
+	Name = "Mode",
+	Options = {"Balanced", "Performance", "Quality"},
+	Default = "Balanced",
+	Searchable = true,
+	Callback = function(Value)
+		print("Mode:", Value)
+	end,
+})
+
+Modes:Set("Quality")
+Modes:Refresh({"Balanced", "Performance", "Quality", "Custom"}, true)
 ```
 
 ### Adding a set of new Dropdown buttons to an existing menu
@@ -580,3 +605,19 @@ Config files are made for every game the library is launched in.
 ```lua
 OrionLib:Destroy()
 ```
+
+## API quick index
+
+| Scope | Methods |
+| --- | --- |
+| Window creation | `OrionLib:MakeWindow(config)` |
+| Tabs and sections | `Window:MakeTab(config)`, `Tab:AddSection(config)` |
+| Common controls | `AddButton`, `AddToggle`, `AddSlider`, `AddDropdown`, `AddBind`, `AddTextbox`, `AddColorpicker` |
+| Content and layout | `AddLabel`, `AddParagraph`, `AddDivider`, `AddPanel`, `AddCircle`, `AddProgressBar`, `AddCustom` |
+| Media and code | `AddMusicPlayer`, `AddCodeEditor`, `Window:SetMedia`, `Window:SetMusic` |
+| Window behavior | `Window:Search`, `Hide`, `Show`, `Toggle`, `Destroy` |
+| Themes and language | `RegisterTheme`, `Theme`, `SetThemeColor`, `RegisterLanguage`, `Language`, `Translate` |
+| Optional runtime features | `RegisterModule`, `EnableModule`, `DisableModule`, `ConfigureAFK`, `SetAFK`, `IsAFK` |
+| Utilities | `Clamp`, `SafeCall`, `DeepCopy`, `Debounce`, `Throttle`, `CreateSignal` |
+
+For a `LocalScript` installation example and compatibility notes, see [README.md](README.md). This index is a navigation aid; each control section above documents its options and return methods.

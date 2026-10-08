@@ -135,6 +135,7 @@ end
 OrionLib.Languages = {
 	en = {
 		Search = "Search...",
+		NoResults = "No results",
 		Notification = "Notification",
 		Open = "Open Orion",
 		Hidden = "Interface Hidden",
@@ -147,6 +148,7 @@ OrionLib.Languages = {
 	},
 	ru = {
 		Search = "Поиск...",
+		NoResults = "Ничего не найдено",
 		Notification = "Уведомление",
 		Open = "Открыть Orion",
 		Hidden = "Интерфейс скрыт",
@@ -159,6 +161,7 @@ OrionLib.Languages = {
 	},
 	uk = {
 		Search = "Пошук...",
+		NoResults = "Нічого не знайдено",
 		Notification = "Сповіщення",
 		Open = "Відкрити Orion",
 		Hidden = "Інтерфейс приховано",
@@ -171,6 +174,7 @@ OrionLib.Languages = {
 	},
 	pl = {
 		Search = "Szukaj...",
+		NoResults = "Brak wynikow",
 		Notification = "Powiadomienie",
 		Open = "Otworz Orion",
 		Hidden = "Interfejs ukryty",
@@ -183,6 +187,7 @@ OrionLib.Languages = {
 	},
 	es = {
 		Search = "Buscar...",
+		NoResults = "Sin resultados",
 		Notification = "Notificacion",
 		Open = "Abrir Orion",
 		Hidden = "Interfaz oculta",
@@ -195,6 +200,7 @@ OrionLib.Languages = {
 	},
 	de = {
 		Search = "Suchen...",
+		NoResults = "Keine Ergebnisse",
 		Notification = "Benachrichtigung",
 		Open = "Orion offnen",
 		Hidden = "Oberflache ausgeblendet",
@@ -1340,6 +1346,11 @@ function OrionLib:MakeWindow(WindowConfig)
 		Size = UDim2.new(1, 0, 0, 1),
 		Position = UDim2.new(0, 0, 1, -1)
 	}), "Stroke")
+	local WindowMinimumSize = Vector2.new(280, 220)
+	local MainWindowSizeConstraint = Create("UISizeConstraint", {
+		MinSize = WindowMinimumSize,
+		MaxSize = Vector2.new(615, 344)
+	})
 
 	local MainWindow = AddThemeObject(SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(255, 255, 255), 0, 10), {
 		Parent = Orion,
@@ -1348,10 +1359,7 @@ function OrionLib:MakeWindow(WindowConfig)
 		Size = UDim2.new(1, -20, 1, -20),
 		ClipsDescendants = true
 	}), {
-		Create("UISizeConstraint", {
-			MinSize = Vector2.new(280, 220),
-			MaxSize = Vector2.new(615, 344)
-		}),
+		MainWindowSizeConstraint,
 		--SetProps(MakeElement("Image", "rbxassetid://3523728077"), {
 		--	AnchorPoint = Vector2.new(0.5, 0.5),
 		--	Position = UDim2.new(0.5, 0, 0.5, 0),
@@ -1492,6 +1500,10 @@ function OrionLib:MakeWindow(WindowConfig)
 		})
 		WindowIcon.Parent = MainWindow.TopBar
 	end	
+	local ExpandedWindowNameSize = WindowName.Size
+	local ExpandedWindowNamePosition = WindowName.Position
+	local ExpandedWindowNameTextYAlignment = WindowName.TextYAlignment
+	local ExpandedWindowNameTextTruncate = WindowName.TextTruncate
 
 	local SearchEnabled = WindowConfig.SearchEnabled ~= false
 	local SearchTextBox
@@ -1645,6 +1657,11 @@ function OrionLib:MakeWindow(WindowConfig)
 	end
 
 	AddConnection(CloseBtn.MouseButton1Up, function()
+		if Minimized then
+			OrionLib.Utils.SafeCall(WindowConfig.CloseCallback)
+			OrionLib:Destroy()
+			return
+		end
 		MainWindow.Visible = false
 		UIHidden = true
 		if MobileReopen then
@@ -1669,22 +1686,40 @@ function OrionLib:MakeWindow(WindowConfig)
 
 	AddConnection(MinimizeBtn.MouseButton1Up, function()
 		if Minimized then
-			TweenService:Create(MainWindow, TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Size = UDim2.new(1, -20, 1, -20)}):Play()
+			Minimized = false
+			MainWindowSizeConstraint.MinSize = Vector2.zero
+			WindowName.Size = ExpandedWindowNameSize
+			WindowName.Position = ExpandedWindowNamePosition
+			WindowName.TextYAlignment = ExpandedWindowNameTextYAlignment
+			WindowName.TextTruncate = ExpandedWindowNameTextTruncate
+			local RestoreTween = TweenService:Create(MainWindow, TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Size = UDim2.new(1, -20, 1, -20)})
+			RestoreTween:Play()
 			MinimizeBtn.Ico.Image = "rbxassetid://7072719338"
-			task.wait(.02)
-			MainWindow.ClipsDescendants = false
+			MainWindow.ClipsDescendants = true
 			WindowStuff.Visible = true
 			WindowTopBarLine.Visible = true
+			task.delay(0.5, function()
+				if not Minimized and MainWindow.Parent then
+					MainWindowSizeConstraint.MinSize = WindowMinimumSize
+					MainWindow.ClipsDescendants = false
+				end
+			end)
 		else
+			Minimized = true
+			MainWindowSizeConstraint.MinSize = Vector2.zero
 			MainWindow.ClipsDescendants = true
 			WindowTopBarLine.Visible = false
 			MinimizeBtn.Ico.Image = "rbxassetid://7072720870"
 
-			TweenService:Create(MainWindow, TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Size = UDim2.new(0, WindowName.TextBounds.X + 140, 0, 50)}):Play()
-			task.wait(0.1)
-			WindowStuff.Visible = false	
+			local MinimizedWidth = math.clamp(WindowName.TextBounds.X + 140, 220, 615)
+			local TitleLeft = WindowConfig.ShowIcon and 50 or 25
+			WindowName.Position = UDim2.new(0, TitleLeft, 0, 0)
+			WindowName.Size = UDim2.new(1, -(TitleLeft + 120), 1, 0)
+			WindowName.TextYAlignment = Enum.TextYAlignment.Center
+			WindowName.TextTruncate = Enum.TextTruncate.AtEnd
+			TweenService:Create(MainWindow, TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Size = UDim2.new(0, MinimizedWidth, 0, 50)}):Play()
+			WindowStuff.Visible = false
 		end
-		Minimized = not Minimized    
 	end)
 
 	local function LoadSequence()
@@ -1929,7 +1964,7 @@ function OrionLib:MakeWindow(WindowConfig)
 		return Tween
 	end
 
-	TabFunction.Search = function(Query)
+	function TabFunction:Search(Query)
 		if SearchTextBox then
 			SearchTextBox.Text = Query or ""
 		end
@@ -2659,6 +2694,8 @@ function OrionLib:MakeWindow(WindowConfig)
 				DropdownConfig.Default = DropdownConfig.Default or ""
 				DropdownConfig.Callback = DropdownConfig.Callback or function() end
 				DropdownConfig.Save = DropdownConfig.Save or false
+				DropdownConfig.Searchable = DropdownConfig.Searchable == true
+				DropdownConfig.SearchPlaceholder = DropdownConfig.SearchPlaceholder or OrionLib:Translate("Search", "Search...")
 
 				local Dropdown = {Value = DropdownConfig.Default, Options = DropdownConfig.Options, Buttons = {}, Toggled = false, Type = "Dropdown", Save = DropdownConfig.Save}
 				local MaxElements = 5
@@ -2677,6 +2714,28 @@ function OrionLib:MakeWindow(WindowConfig)
 					Size = UDim2.new(1, 0, 1, -38),
 					ClipsDescendants = true
 				}), "Divider")
+				local SearchBox
+				local NoResultsLabel
+				if DropdownConfig.Searchable then
+					SearchBox = AddThemeObject(SetProps(MakeElement("TextBox"), {
+						Parent = DropdownContainer,
+						Size = UDim2.new(1, -12, 0, 28),
+						LayoutOrder = -1,
+						PlaceholderText = DropdownConfig.SearchPlaceholder,
+						TextXAlignment = Enum.TextXAlignment.Left,
+						TextSize = 12,
+						ClearTextOnFocus = false,
+						Name = "DropdownSearch"
+					}), "Text")
+					NoResultsLabel = AddThemeObject(SetProps(MakeElement("Label", OrionLib:Translate("NoResults", "No results"), 12), {
+						Parent = DropdownContainer,
+						Size = UDim2.new(1, 0, 0, 28),
+						LayoutOrder = 100000,
+						TextXAlignment = Enum.TextXAlignment.Center,
+						Visible = false,
+						Name = "NoResults"
+					}), "TextDark")
+				end
 
 				local Click = SetProps(MakeElement("Button"), {
 					Size = UDim2.new(1, 0, 1, 0)
@@ -2724,12 +2783,53 @@ function OrionLib:MakeWindow(WindowConfig)
 					MakeElement("Corner")
 				}), "Second")
 
-				AddConnection(DropdownList:GetPropertyChangedSignal("AbsoluteContentSize"), function()
-					DropdownContainer.CanvasSize = UDim2.new(0, 0, 0, DropdownList.AbsoluteContentSize.Y)
-				end)  
+				local function GetExpandedHeight()
+					local MaxContentHeight = MaxElements * 28
+					if DropdownConfig.Searchable then
+						MaxContentHeight += 28
+					end
+					if NoResultsLabel and NoResultsLabel.Visible then
+						MaxContentHeight += 28
+					end
+					return math.min(DropdownList.AbsoluteContentSize.Y, MaxContentHeight) + 38
+				end
 
+				local function UpdateDropdownLayout()
+					DropdownContainer.CanvasSize = UDim2.new(0, 0, 0, DropdownList.AbsoluteContentSize.Y)
+					if Dropdown.Toggled then
+						TweenService:Create(DropdownFrame, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+							Size = UDim2.new(1, 0, 0, GetExpandedHeight())
+						}):Play()
+					end
+				end
+
+				AddConnection(DropdownList:GetPropertyChangedSignal("AbsoluteContentSize"), UpdateDropdownLayout)
+
+				local function ApplyDropdownFilter()
+					if not SearchBox then
+						return
+					end
+					local Query = string.lower(SearchBox.Text or "")
+					local MatchCount = 0
+					for Option, OptionButton in pairs(Dropdown.Buttons) do
+						local Matches = Query == "" or string.find(string.lower(tostring(Option)), Query, 1, true) ~= nil
+						OptionButton.Visible = Matches
+						if Matches then
+							MatchCount += 1
+						end
+					end
+					NoResultsLabel.Visible = Query ~= "" and MatchCount == 0
+					UpdateDropdownLayout()
+				end
+
+				if SearchBox then
+					AddConnection(SearchBox:GetPropertyChangedSignal("Text"), ApplyDropdownFilter)
+				end
+
+				local OptionOrder = 0
 				local function AddOptions(Options)
-					for _, Option in pairs(Options) do
+					for _, Option in ipairs(Options) do
+						OptionOrder += 1
 						local OptionBtn = AddThemeObject(SetProps(SetChildren(MakeElement("Button", Color3.fromRGB(40, 40, 40)), {
 							MakeElement("Corner", 0, 6),
 							AddThemeObject(SetProps(MakeElement("Label", Option, 13, 0.4), {
@@ -2740,6 +2840,7 @@ function OrionLib:MakeWindow(WindowConfig)
 						}), {
 							Parent = DropdownContainer,
 							Size = UDim2.new(1, 0, 0, 28),
+							LayoutOrder = OptionOrder,
 							BackgroundTransparency = 1,
 							ClipsDescendants = true
 						}), "Divider")
@@ -2760,9 +2861,11 @@ function OrionLib:MakeWindow(WindowConfig)
 						end    
 						table.clear(Dropdown.Options)
 						table.clear(Dropdown.Buttons)
+						OptionOrder = 0
 					end
 					Dropdown.Options = Options
 					AddOptions(Dropdown.Options)
+					ApplyDropdownFilter()
 				end  
 
 				function Dropdown:Set(Value)
@@ -2792,11 +2895,10 @@ function OrionLib:MakeWindow(WindowConfig)
 					Dropdown.Toggled = not Dropdown.Toggled
 					DropdownFrame.F.Line.Visible = Dropdown.Toggled
 					TweenService:Create(DropdownFrame.F.Ico,TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),{Rotation = Dropdown.Toggled and 180 or 0}):Play()
-					if #Dropdown.Options > MaxElements then
-						TweenService:Create(DropdownFrame,TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),{Size = Dropdown.Toggled and UDim2.new(1, 0, 0, 38 + (MaxElements * 28)) or UDim2.new(1, 0, 0, 38)}):Play()
-					else
-						TweenService:Create(DropdownFrame,TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),{Size = Dropdown.Toggled and UDim2.new(1, 0, 0, DropdownList.AbsoluteContentSize.Y + 38) or UDim2.new(1, 0, 0, 38)}):Play()
-					end
+					local TargetHeight = Dropdown.Toggled and GetExpandedHeight() or 38
+					TweenService:Create(DropdownFrame, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+						Size = UDim2.new(1, 0, 0, TargetHeight)
+					}):Play()
 				end)
 
 				Dropdown:Refresh(Dropdown.Options, false)
