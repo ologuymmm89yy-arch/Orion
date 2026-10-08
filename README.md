@@ -6,7 +6,10 @@ Orion UI is a Luau library for Roblox that helps you build themed windows, tabs,
 
 - `source` — the current library entry point
 - `Documentation.md` — detailed API and usage notes
+- `DIFFERENCES.md` — overview of how this fork improves on the original Orion project
 - `docs/` — published reference site and searchable API docs
+
+See also [DIFFERENCES.md](DIFFERENCES.md) for a comparison of this build with the upstream Orion project and notes on compatibility with automation-style input environments.
 
 ## Quick start
 
