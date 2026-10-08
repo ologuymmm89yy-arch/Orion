@@ -13,6 +13,8 @@
     <a class="brand" href="#top" aria-label="На главную Orion"><span class="brand-mark">O</span><span>Orion</span></a>
     <nav class="nav-links" aria-label="Основная навигация">
       <a href="#features">Возможности</a>
+      <a href="#differences">Отличия</a>
+      <a href="#updates">Обновления</a>
       <a href="#quickstart">Начало работы</a>
       <a href="#api">Справочник</a>
       <a href="https://github.com/ologuymmm89yy-arch/Orion" target="_blank" rel="noreferrer">GitHub <span class="external">↗</span></a>
@@ -51,10 +53,32 @@
       </div>
     </section>
 
+    <section class="section shell difference-section" id="differences">
+      <div class="section-heading"><p class="eyebrow">Эта сборка Orion</p><h2>Что добавлено поверх базовой библиотеки.</h2><p>Не универсальный рейтинг библиотек, а конкретные отличия этого форка для проектов, которым нужны эти функции.</p></div>
+      <div class="difference-list">
+        <article><span>01</span><div><h3>Шесть языков интерфейса</h3><p>Английский, русский, украинский, польский, испанский и немецкий; можно зарегистрировать собственный словарь.</p></div></article>
+        <article><span>02</span><div><h3>Темы с настройкой палитры</h3><p>Пять встроенных тем, регистрация своей цветовой схемы и изменение цвета без пересоздания окна.</p></div></article>
+        <article><span>03</span><div><h3>Редактор Luau внутри UI</h3><p>Нумерация строк, поиск, замена, режим только для чтения и управление фокусом. Редактор не исполняет введённый код.</p></div></article>
+        <article><span>04</span><div><h3>Опциональные модули и утилиты</h3><p>Жизненный цикл модулей, обнаружение AFK по выбору разработчика, сигналы и функции debounce/throttle.</p></div></article>
+        <article><span>05</span><div><h3>Меньше обязательных сетевых зависимостей</h3><p>Базовые иконки сопоставлены локально; для создания основного интерфейса библиотеке не нужно скачивать удалённый каталог иконок.</p></div></article>
+        <article><span>06</span><div><h3>Адаптация к сенсорному вводу</h3><p>Размеры и обработка управления учитывают мобильные устройства; предусмотрены режим производительности и очистка подключений.</p></div></article>
+      </div>
+      <p class="comparison-note">Другие UI-библиотеки могут быть лучше для иных задач. Orion имеет смысл выбирать, когда нужен именно этот набор возможностей и совместимый API.</p>
+    </section>
+
+    <section class="section shell updates-section" id="updates">
+      <div class="section-heading"><p class="eyebrow">Журнал изменений</p><h2>Ключевые обновления.</h2><p>Сводка этапов разработки без формальных номеров версий.</p></div>
+      <ol class="updates-list">
+        <li><time datetime="2026-09-30">30.09.2026</time><div><h3>Заставка и справочник</h3><p>Обновлён экран загрузки, добавлены подпись и настраиваемая длительность; справочник и сайт приведены к текущему API.</p></div></li>
+        <li><time datetime="2026-09-21">21.09.2026</time><div><h3>Редактор и расширения</h3><p>Добавлены редактор Luau, поиск и замена, runtime-модули, AFK-наблюдение и набор общих утилит.</p></div></li>
+        <li><time datetime="2026-09-20">20.09.2026</time><div><h3>Темы, языки и совместимость</h3><p>Расширены темы и локализация, добавлены встроенные сопоставления иконок, адаптация интерфейса и улучшения очистки ресурсов.</p></div></li>
+      </ol>
+    </section>
+
     <section class="section shell split-section" id="quickstart">
-      <div class="section-heading"><p class="eyebrow">Начало работы</p><h2>Создайте первое окно.</h2><p>Скопируйте пример и добавьте нужные элементы из справочника ниже.</p><button class="copy-button" data-copy-target="quick-code" type="button">Скопировать код <span>⌘</span></button></div>
-      <div class="code-panel"><div class="code-panel-bar"><span>main.luau</span><span class="code-dot">●</span></div><pre id="quick-code"><code><span class="comment">-- Load the current Orion source</span>
-<span class="kw">local</span> OrionLib = <span class="fn">loadstring</span>(game:<span class="fn">HttpGet</span>(<span class="str">"https://raw.githubusercontent.com/ologuymmm89yy-arch/Orion/main/source"</span>))()
+      <div class="section-heading"><p class="eyebrow">Начало работы</p><h2>Создайте первое окно.</h2><p>В Roblox Studio поместите библиотеку в ModuleScript и подключите её из LocalScript.</p><button class="copy-button" data-copy-target="quick-code" type="button">Скопировать код <span>⌘</span></button></div>
+      <div class="code-panel"><div class="code-panel-bar"><span>StarterPlayerScripts / LocalScript</span><span class="code-dot">●</span></div><pre id="quick-code"><code><span class="kw">local</span> ReplicatedStorage = game:<span class="fn">GetService</span>(<span class="str">"ReplicatedStorage"</span>)
+    <span class="kw">local</span> OrionLib = <span class="fn">require</span>(ReplicatedStorage:<span class="fn">WaitForChild</span>(<span class="str">"Orion"</span>))
 
 <span class="kw">local</span> Window = OrionLib:<span class="fn">MakeWindow</span>({
   Name = <span class="str">"Мой проект"</span>,
@@ -152,7 +176,7 @@ Connection:Disconnect()</code></pre></div>
       <p class="empty-state" id="emptyState" hidden>По этому запросу ничего не найдено.</p>
     </section>
 
-    <section class="compat shell"><div><p class="eyebrow">Совместимость</p><h2>Проверяйте в Roblox Studio.</h2><p>Библиотека использует API Roblox. Совместимость сторонних загрузчиков зависит от доступности HTTP, GUI и <code>loadstring</code>; эти ограничения не контролируются Orion.</p></div><div class="compat-chip"><span class="pulse"></span><strong>Среда проверки</strong><small>Roblox Studio · ПК и мобильные устройства</small></div></section>
+    <section class="compat shell"><div><p class="eyebrow">Совместимость</p><h2>Основная среда проверки — Roblox Studio.</h2><p>Сторонние инжекторы не поддерживаются. Они могут менять окружение и доступность Roblox API, что способно вызвать ошибки, нестабильность или закрытие клиента. Библиотека не контролирует инжектор и не может гарантировать стабильный запуск через него; причину вылета нужно устанавливать по полному логу и воспроизводимому сценарию.</p></div><div class="compat-chip"><span class="pulse"></span><strong>Рекомендуемая проверка</strong><small>Roblox Studio · опыт, который вы разрабатываете</small></div></section>
   </main>
 
   <footer class="footer shell"><span>© 2026 Orion UI</span><span>Справочник по библиотеке Luau</span><a href="https://github.com/ologuymmm89yy-arch/Orion" target="_blank" rel="noreferrer">GitHub ↗</a></footer>

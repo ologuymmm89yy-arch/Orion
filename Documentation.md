@@ -101,7 +101,29 @@ Custom asset IDs and image URLs passed directly to `Icon`, `Image`, or notificat
 
 ## Booting the Library
 
-The current source is published at the repository URL below. Use the same URL for testing so the loader does not run an outdated copy.
+### Roblox Studio
+
+Create a `ModuleScript` named `Orion` in `ReplicatedStorage`, paste the contents of [`source`](source) into it, and require it from a `LocalScript` in `StarterPlayerScripts`:
+
+```lua
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local OrionLib = require(ReplicatedStorage:WaitForChild("Orion"))
+
+local Window = OrionLib:MakeWindow({
+	Name = "Studio UI",
+	Language = "en",
+	SaveConfig = false,
+})
+
+local Tab = Window:MakeTab({Name = "Home"})
+Tab:AddParagraph("Orion is ready", "The library is running on the client.")
+```
+
+Orion is a client UI library. Requiring it from a server context raises an explanatory error instead of waiting indefinitely for a local player.
+
+### HTTP loading
+
+The raw source URL is `https://raw.githubusercontent.com/ologuymmm89yy-arch/Orion/main/source`. Loading it with `game:HttpGet` and `loadstring` requires a host that explicitly supports both functions; this is not the standard Roblox Studio `LocalScript` workflow. HTTP loading is optional: the library source has no startup dependency on a remote code or icon request.
 
 ```lua
 local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/ologuymmm89yy-arch/Orion/main/source"))()

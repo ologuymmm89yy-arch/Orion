@@ -2,6 +2,11 @@ local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
+local RunService = game:GetService("RunService")
+
+if not RunService:IsClient() then
+	error("Orion UI must be loaded from a client context, such as a LocalScript.", 2)
+end
 
 local LocalPlayer = Players.LocalPlayer
 if not LocalPlayer then
@@ -2369,7 +2374,7 @@ function OrionLib:MakeWindow(WindowConfig)
 						Size = UDim2.new(1, -150, 0, 14),
 						Position = UDim2.new(0, 12, 1, -17),
 						TextTruncate = Enum.TextTruncate.AtEnd,
-						тоName = "Status"
+						Name = "Status"
 					}), "TextDark"),
 					AddThemeObject(MakeElement("Stroke"), "Stroke")
 				}), "Second")
