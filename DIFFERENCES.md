@@ -1,17 +1,17 @@
 # Orion: why this fork is better
 
-This file explains where this fork differs from the original Orion project and why it is useful for real-world Roblox client UI work.
+This fork is not just a cosmetic remix. It is a more practical, cleaner, and better-structured version of the original Orion-style UI library, built for real Roblox client work where window behavior, compatibility, and UX matter.
 
 ## Short version
 
-This fork is better for practical use because it focuses on:
+This fork is stronger in the places that matter most:
 
-- more polished interface behavior;
-- clearer window logic and minimization flow;
-- support for mobile and touch-friendly controls;
-- searchable dropdowns and cleaner widgets;
-- better compatibility warnings and safer startup behavior;
-- a cleaner project structure that keeps the library source separate from demo or website content.
+- polished interface behavior instead of a basic static layout;
+- clearer and more stable minimize/restore/close logic;
+- mobile-friendly and touch-aware controls;
+- searchable dropdowns and better widget responsiveness;
+- clearer compatibility handling for restricted or partial Roblox hosts;
+- cleaner project structure and docs that reflect the real source.
 
 ## Main differences from the original
 

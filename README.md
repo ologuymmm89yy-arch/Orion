@@ -1,15 +1,23 @@
 # Orion UI
 
-Orion UI is a Luau library for Roblox that helps you build themed windows, tabs, panels, and utility widgets inside a game or Studio client environment.
+Orion UI is a stronger, more polished fork of the classic Orion-style Roblox UI library. It is built for real client-side projects where window flow, mobile usability, clean controls, and predictable behavior matter more than a raw minimal prototype.
+
+This version focuses on practical advantages:
+
+- cleaner window lifecycle and minimize/restore flow;
+- better mobile-friendly controls and UI stability;
+- searchable dropdowns and more polished widgets;
+- clearer compatibility rules for Roblox Studio and runtime-limited hosts;
+- documentation that matches the actual code instead of a stale or mismatched version.
 
 ## Project files
 
 - `source` — the current library entry point
 - `Documentation.md` — detailed API and usage notes
-- `DIFFERENCES.md` — overview of how this fork improves on the original Orion project
+- `DIFFERENCES.md` — direct comparison of this fork with the original Orion project
 - `docs/` — published reference site and searchable API docs
 
-See also [DIFFERENCES.md](DIFFERENCES.md) for a comparison of this build with the upstream Orion project and notes on compatibility with automation-style input environments.
+See also [DIFFERENCES.md](DIFFERENCES.md) for a sharper comparison of this build against the upstream project, including compatibility notes for automation-style input environments and real-world client hosting constraints.
 
 ## Quick start
 

@@ -1,6 +1,14 @@
 # Orion Library
 
-This guide describes the current Orion Library source. The searchable website reference is available in [`docs/`](docs/).
+This guide describes the current Orion Library source and the stronger fork behavior that makes it more production-friendly than a bare stock prototype. The searchable website reference is available in [`docs/`](docs/).
+
+This fork is designed to feel more complete and more reliable in real client usage:
+
+- cleaner window state flow;
+- better mobile and compact UI handling;
+- improved widget polish and clearer input behavior;
+- more explicit compatibility checks instead of silent failures;
+- more accurate docs that reflect the actual source.
 
 > **Compatibility:** Orion uses Roblox APIs. Runtime loading through HTTP or `loadstring` depends on the host environment; third-party loaders may also restrict HTTP requests, GUI parents, or other APIs. Test in the target environment and include the full error and stack trace when reporting a problem.
 
