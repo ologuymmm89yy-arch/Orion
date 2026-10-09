@@ -287,6 +287,94 @@ Name = <string> - The name of the section.
 ```
 You can add elements to sections the same way you would add them to a tab normally.
 
+### Building controls from blocks
+
+Use `AddWidgets` when a tab is easier to describe as an ordered list. Every entry uses a `Type` matching an existing widget name without the `Add` prefix. Settings are passed directly on the entry, and optional `Key` values make returned handles easy to access.
+
+```lua
+local Controls = Tab:AddWidgets({
+	{Type = "Section", Name = "Video"},
+	{Type = "Toggle", Key = "Autoplay", Name = "Autoplay", Default = false},
+	{Type = "Slider", Key = "Volume", Name = "Volume", Min = 0, Max = 100, Default = 80},
+	{Type = "Section", Name = "Library"},
+	{Type = "Dropdown", Key = "Quality", Name = "Quality", Options = {"720p", "1080p", "4K"}, Default = "1080p"},
+	{Type = "Button", Key = "Reload", Name = "Reload list", Callback = function()
+		print("Reload requested")
+	end},
+})
+
+Controls.Volume:Set(60)
+Controls.Quality:Set("4K")
+```
+
+`Section` starts a new group. `Label` accepts `Text`; `Paragraph` accepts `Title` and `Content`. All other entries use the same settings as their matching `Add...` methods. The original individual methods remain supported and are preferable when a control needs custom setup immediately after creation.
+
+For a complete compact example, see [`Examples/VideoHub.lua`](Examples/VideoHub.lua). It builds a small video catalog and settings UI in 97 lines. The catalog is demonstration data; actual video playback, accounts, and remote search need to be implemented by the experience using its own permitted services.
+
+### Common UI recipes
+
+#### Settings panel
+
+Keep current values in your game code and update them from UI callbacks. `AddWidgets` returns handles so settings can also be changed later:
+
+```lua
+local Settings = {Music = true, Volume = 65}
+local Controls = Tab:AddWidgets({
+	{Type = "Section", Name = "Audio"},
+	{Type = "Toggle", Key = "Music", Name = "Music", Default = Settings.Music, Callback = function(Value)
+		Settings.Music = Value
+	end},
+	{Type = "Slider", Key = "Volume", Name = "Volume", Min = 0, Max = 100, Default = Settings.Volume, Callback = function(Value)
+		Settings.Volume = Value
+	end},
+})
+
+Controls.Volume:Set(40)
+```
+
+#### Searchable item selector
+
+Use a searchable dropdown for a long list of known choices, then apply the selected item in the callback:
+
+```lua
+local Items = {"Health Potion", "Map", "Lantern", "Key"}
+local ItemPicker = Tab:AddDropdown({
+	Name = "Choose item",
+	Options = Items,
+	Default = Items[1],
+	Searchable = true,
+	Callback = function(ItemName)
+		print("Selected item:", ItemName)
+	end,
+})
+
+ItemPicker:Refresh({"Health Potion", "Map", "Lantern", "Key", "Compass"}, true)
+```
+
+#### Quest progress
+
+Update a progress widget from actual game events. This example advances it from a button; in a game, call `Progress:Set(...)` when objectives are completed:
+
+```lua
+local Completed = 0
+local Progress = Tab:AddProgressBar({
+	Name = "Quest objectives",
+	Min = 0,
+	Max = 3,
+	Value = Completed,
+})
+
+Tab:AddButton({
+	Name = "Complete test objective",
+	Callback = function()
+		Completed = math.min(Completed + 1, 3)
+		Progress:Set(Completed)
+	end,
+})
+```
+
+These are UI patterns, not a backend: inventory, quest state, persistence, and multiplayer validation should be owned by the game systems that provide the data.
+
 ## Custom GUI elements
 ```lua
 local Badge = Tab:AddCircle({

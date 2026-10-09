@@ -15,9 +15,29 @@ This version focuses on practical advantages:
 - `source` — the current library entry point
 - `Documentation.md` — detailed API and usage notes
 - `DIFFERENCES.md` — direct comparison of this fork with the original Orion project
+- `Examples/VideoHub.lua` — compact video-catalog UI example built with `AddWidgets`
 - `docs/` — published reference site and searchable API docs
 
 See also [DIFFERENCES.md](DIFFERENCES.md) for a sharper comparison of this build against the upstream project, including compatibility notes for automation-style input environments and real-world client hosting constraints.
+
+## Source map
+
+The library is currently kept as one Roblox `ModuleScript` in `source`. These approximate line ranges explain where each responsibility lives; line numbers can shift as features are added.
+
+| Current lines | Block | What it contains |
+| --- | --- | --- |
+| 1-215 | Startup and shared state | Roblox services, client checks, GUI-parent fallback, themes, languages, and shared registries. |
+| 216-530 | Public helpers and runtime state | Language and module APIs, icons, connection cleanup, and AFK handling. |
+| 531-821 | UI and theme utilities | Dragging, instance creation, theme application, visual effects, and animation helpers. |
+| 822-1076 | Config and shared utilities | Color/config serialization, saved settings, and common internal helpers. |
+| 1077-1190 | Notifications and initialization | Notification UI and library startup. |
+| 1191-1848 | Window creation | Window config, main interface, loading intro, visibility, minimize/restore, and close behavior. |
+| 1849-2071 | Window and tab API | Background/media, music, search, visibility methods, and tab creation. |
+| 2072-3404 | Widgets | Custom UI, editor, panels, progress, buttons, toggles, sliders, dropdowns, binds, textboxes, and color pickers. |
+| 3405-3548 | Sections and compact builder | `AddSection` and `AddWidgets`, the declarative API for creating controls from a list. |
+| 3549-end | Cleanup and export | Disconnects resources, destroys the UI, and returns `OrionLib`. |
+
+The line map describes the current revision, not a stable API contract. Prefer searching for the function name when navigating source after updates.
 
 ## Quick start
 
@@ -61,6 +81,7 @@ These functions are not available in a normal Roblox Studio `LocalScript`. Use t
 - Built-in themes: `Default`, `Soft`, `Glass`, `Night`, `Aurora`
 - Optional per-theme color overrides
 - Search across window elements and optional filtering inside long dropdowns
+- Declarative `AddWidgets` blocks for creating grouped controls with less boilerplate
 - Minimize to a compact draggable title bar with restore and full-close actions
 - In-game Luau code editor widget
 - Optional AFK detection with callbacks
@@ -128,8 +149,30 @@ Create controls from a tab or section. Most controls accept a `Name` and `Callba
 | `AddCodeEditor` | `Text`, `ReadOnly`, `Size`, `TextSize`, `Placeholder`, `Callback` | Editor handle described below. |
 | `AddCustom` | GUI object and optional properties | The parented GUI object, or `nil` for a non-GUI instance. |
 | `AddSection` | `Name` | Section that exposes the same widget methods. |
+| `AddWidgets` | array of `{Type, Key, ...settings}` entries | Creates controls and sections in order; returns handles by `Key` or list index. |
 
 `Save` and `Flag` apply to toggles, sliders, dropdowns, binds, and color pickers. A saved value needs both `Save = true` and a unique `Flag`. Config persistence depends on host file APIs.
+
+For a shorter declarative style, create a group of controls in one block. Existing `AddButton`, `AddToggle`, and other methods remain available:
+
+```lua
+local Controls = Tools:AddWidgets({
+    {Type = "Section", Name = "Playback"},
+    {Type = "Toggle", Key = "AutoPlay", Name = "Autoplay", Default = true},
+    {Type = "Slider", Key = "Volume", Name = "Volume", Min = 0, Max = 100, Default = 75},
+    {Type = "Section", Name = "Actions"},
+    {Type = "Button", Key = "Refresh", Name = "Refresh list", Callback = function()
+        print("Refreshing")
+    end},
+})
+
+Controls.Volume:Set(50)
+Controls.AutoPlay:Set(false)
+```
+
+Each entry's `Type` matches a widget name without the `Add` prefix. `Key` is optional; when omitted, the returned handle is stored by its numeric position. `Label` uses `Text`, and `Paragraph` uses `Title` and `Content`.
+
+See [`Examples/VideoHub.lua`](Examples/VideoHub.lua) for a complete 97-line catalog UI example. It uses sample data; connect your own playback and data services for real videos.
 
 ### Searchable dropdown
 

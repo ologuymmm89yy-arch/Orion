@@ -3437,6 +3437,46 @@ function OrionLib:MakeWindow(WindowConfig)
 			return SectionFunction
 		end	
 
+		function ElementFunction:AddWidgets(Definitions)
+			if type(Definitions) ~= "table" then
+				error("AddWidgets expects a list of widget definitions.", 2)
+			end
+
+			local Handles = {}
+			local Scope = self
+			for Index, Definition in ipairs(Definitions) do
+				if type(Definition) ~= "table" or type(Definition.Type) ~= "string" then
+					error("Each AddWidgets entry must be a table with a Type field (entry " .. Index .. ").", 2)
+				end
+
+				local Config = {}
+				for Key, Value in pairs(Definition) do
+					if Key ~= "Type" and Key ~= "Key" then
+						Config[Key] = Value
+					end
+				end
+
+				local Handle
+				if Definition.Type == "Section" then
+					Scope = self:AddSection(Config)
+					Handle = Scope
+				elseif Definition.Type == "Label" then
+					Handle = Scope:AddLabel(Config.Text or Config.Name or "")
+				elseif Definition.Type == "Paragraph" then
+					Handle = Scope:AddParagraph(Config.Title or Config.Name or "", Config.Content or "")
+				else
+					local Method = Scope["Add" .. Definition.Type]
+					if type(Method) ~= "function" then
+						error("Unknown AddWidgets type '" .. Definition.Type .. "' (entry " .. Index .. ").", 2)
+					end
+					Handle = Method(Scope, Config)
+				end
+
+				Handles[Definition.Key or Index] = Handle
+			end
+			return Handles
+		end
+
 		for i, v in next, GetElements(Container) do
 			ElementFunction[i] = v 
 		end
